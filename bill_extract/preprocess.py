@@ -1,9 +1,10 @@
 """Image preprocessing utilities."""
 
+from typing import Tuple
+
 import cv2
 import numpy as np
 from PIL import Image
-from typing import Tuple, Optional
 
 
 def load_image(image_path: str) -> np.ndarray:
@@ -110,16 +111,34 @@ def preprocessing_pipeline(
     resize: bool = True,
     denoise_flag: bool = True,
     sharpen_flag: bool = False,
-    enhance: bool = True
+    enhance: bool = True,
+    deskew: bool = True,
 ) -> np.ndarray:
-    """Run full preprocessing pipeline."""
+    """Run full preprocessing pipeline.
+    
+    Args:
+        image_path: Path to input image
+        resize: Resize image to reduce processing time
+        denoise_flag: Apply light denoising
+        sharpen_flag: Apply sharpening filter
+        enhance: Apply CLAHE contrast enhancement
+        deskew: Correct document skew using OpenCV
+    
+    Returns:
+        Enhanced numpy array suitable for OCR
+    """
     img = load_image(image_path)
 
     if resize:
         img = resize_image(img)
 
+    img = grayscale(img)
+
     if enhance:
         img = enhance_contrast(img)
+
+    if deskew:
+        img = correct_skew(img)
 
     if denoise_flag:
         img = denoise(img)

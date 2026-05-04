@@ -1,8 +1,8 @@
 """Tests for CLI main module."""
 
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+import logging
+from unittest.mock import Mock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -41,7 +41,7 @@ class TestCLI:
         from bill_extract.main import app
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "input" in result.stdout.lower()
+        assert "bill-extract" in result.stdout.lower()
 
     def test_cli_requires_input(self, runner):
         """Test that --input is required."""
@@ -87,7 +87,7 @@ class TestDisplayResults:
 
     def test_display_results_table(self):
         """Test table display."""
-        from bill_extract.extractor import ExtractedBill, BillItem
+        from bill_extract.extractor import BillItem, ExtractedBill
         from bill_extract.main import _display_results
 
         bill = ExtractedBill(
@@ -108,11 +108,19 @@ class TestSaveResults:
     """Test result saving."""
 
     def test_save_results_json(self, tmp_path):
-        """Test saving results to JSON."""
+        """Test saving results to JSON in simplified format."""
+        from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _save_results
 
-        bill = ExtractedBill(vendor="Test", total=100.0, currency="EUR")
+        bill = ExtractedBill(
+            vendor="Test",
+            date=date(2026, 4, 15),
+            invoice_number="FACT-987654",
+            total=245.80,
+            currency="EUR"
+        )
         results = [("test.png", bill)]
         output_dir = tmp_path / "output"
         output_dir.mkdir()
@@ -124,8 +132,28 @@ class TestSaveResults:
 
         with open(output_file) as f:
             data = json.load(f)
-            assert data["vendor"] == "Test"
-            assert data["total"] == 100.0
+            assert data["date"] == "2026-04-15"
+            assert data["amount"] == 245.80
+            assert data["id"] == "FACT-987654"
+
+    def test_save_results_json_missing_fields(self, tmp_path, caplog):
+        """Test JSON output with null values and warning logs."""
+        caplog.set_level(logging.WARNING, logger="bill_extract")
+        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import _save_results
+
+        bill = ExtractedBill(vendor="Test", total=None, currency="EUR")
+        results = [("test.png", bill)]
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        _save_results(results, output_dir)
+
+        output_file = output_dir / "test.json"
+        with open(output_file) as f:
+            data = json.load(f)
+            assert data["amount"] is None
+            assert "Missing amount" in caplog.text
 
 
 class TestPrintJsonOutput:
@@ -133,14 +161,72 @@ class TestPrintJsonOutput:
 
     def test_print_json_output(self):
         """Test JSON output to stdout."""
+        from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _print_json_output
-        from io import StringIO
 
-        bill = ExtractedBill(vendor="Test", total=100.0, currency="EUR")
+        bill = ExtractedBill(
+            vendor="Test",
+            date=date(2026, 4, 15),
+            invoice_number="FACT-987654",
+            total=245.80,
+            currency="EUR"
+        )
         results = [("test.png", bill)]
 
         with patch("bill_extract.main.console", new=Mock()) as mock_console:
             mock_console.print_json = Mock()
             _print_json_output(results)
             mock_console.print_json.assert_called_once()
+
+    def test_print_json_output_missing_fields(self, caplog):
+        """Test JSON output with missing fields logs warnings."""
+        caplog.set_level(logging.WARNING, logger="bill_extract")
+        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import _print_json_output
+
+        bill = ExtractedBill(vendor="Test", total=None, invoice_number=None, currency="EUR")
+        results = [("test.png", bill)]
+
+        with patch("bill_extract.main.console", new=Mock()):
+            _print_json_output(results)
+
+        assert "Missing amount" in caplog.text
+        assert "Missing invoice number" in caplog.text
+
+
+class TestFormatJsonOutput:
+    """Test JSON format function."""
+
+    def test_format_json_complete(self):
+        """Test formatting complete bill data."""
+        from datetime import date
+
+        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import _format_json_output
+
+        bill = ExtractedBill(
+            date=date(2026, 4, 15),
+            invoice_number="FACT-987654",
+            total=245.80
+        )
+        result = _format_json_output(bill, "test.png")
+
+        assert result == {"date": "2026-04-15", "amount": 245.80, "id": "FACT-987654"}
+
+    def test_format_json_missing_fields(self, caplog):
+        """Test formatting with missing fields returns null and logs warnings."""
+        caplog.set_level(logging.WARNING, logger="bill_extract")
+        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import _format_json_output
+
+        bill = ExtractedBill()
+        result = _format_json_output(bill, "test.png")
+
+        assert result["date"] is None
+        assert result["amount"] is None
+        assert result["id"] is None
+        assert "Missing date" in caplog.text
+        assert "Missing amount" in caplog.text
+        assert "Missing invoice number" in caplog.text

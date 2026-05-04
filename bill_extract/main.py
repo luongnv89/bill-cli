@@ -1,19 +1,15 @@
 """Bill extraction CLI tool."""
 
 import json
-import logging
-import os
-import sys
-from datetime import date
 from pathlib import Path
-from typing import Optional, Annotated
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
-from bill_extract.logging import setup_logging, get_logger
+from bill_extract.logging import get_logger, setup_logging
 
 try:
     from bill_extract.preprocess import preprocessing_pipeline
@@ -23,14 +19,29 @@ except ImportError:
     preprocessing_pipeline = None
 
 from bill_extract.extractor import BillExtractor, ExtractedBill
-from bill_extract.ocr import OCREngine, FIRST_LOAD as OCR_FIRST_LOAD
-from bill_extract.config import load_patterns
-from bill_extract.ollama_client import OllamaClient, load_ollama_config, OllamaConfig
+from bill_extract.ocr import OCREngine
 
 app = typer.Typer(name="bill-extract")
 console = Console()
 
 logger = get_logger("bill_extract")
+
+
+def _convert_ocr_results(ocr_results: list) -> list[dict]:
+    """Convert OCR results from tuple format to dict format for extractor."""
+    converted = []
+    for result in ocr_results:
+        if isinstance(result, tuple) and len(result) == 2:
+            bbox, (text, confidence) = result
+            y_center = 0.0
+            if bbox and len(bbox) >= 4:
+                y_coords = [point[1] for point in bbox[:4]]
+                y_center = sum(y_coords) / len(y_coords)
+            converted.append({"text": text, "confidence": confidence, "bbox": bbox, "y_center": y_center})
+        else:
+            converted.append({"text": str(result), "confidence": 0.8, "bbox": [], "y_center": 0.0})
+    return converted
+
 
 InputArg = Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")]
 OutputArg = Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory (default: stdout)")]
@@ -38,8 +49,6 @@ LangArg = Annotated[str, typer.Option("--lang", "-l", help="OCR language")]
 PreprocessArg = Annotated[bool, typer.Option("--preprocess", "-p", help="Enable image preprocessing")]
 VerboseArg = Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")]
 DebugArg = Annotated[bool, typer.Option("--debug", "-d", help="Enable debug output")]
-PatternsArg = Annotated[Optional[str], typer.Option("--patterns", help="Path to custom patterns YAML file")]
-OllamaArg = Annotated[bool, typer.Option("--ollama", help="Enable Ollama post-processing")]
 
 
 @app.command()
@@ -50,13 +59,11 @@ def main(
     preprocess: PreprocessArg = False,
     verbose: VerboseArg = False,
     debug: DebugArg = False,
-    patterns: PatternsArg = None,
-    ollama: OllamaArg = False,
 ):
     """Extract information from bills and invoices."""
     log_level = "DEBUG" if debug else "INFO"
     setup_logging(level=log_level)
-    
+
     if not input:
         console.print("[bold red]Error:[/bold red] --input is required")
         raise typer.Exit(code=1)
@@ -93,25 +100,7 @@ def main(
         console.print(f"[bold red]Error:[/bold red] {e}")
         raise typer.Exit(code=1)
 
-    pattern_config = None
-    if patterns:
-        pattern_config = load_patterns(patterns)
-        if verbose:
-            console.print(f"[dim]Using custom patterns from: {patterns}[/dim]")
-    else:
-        if verbose:
-            console.print("[dim]Using default patterns[/dim]")
-
-    extractor = BillExtractor(pattern_config)
-    
-    ollama_client = None
-    if ollama:
-        ollama_config = OllamaConfig(enabled=True)
-        ollama_client = OllamaClient(ollama_config)
-        if verbose:
-            available = ollama_client.is_available
-            console.print(f"[dim]Ollama post-processing: {'enabled' if available else 'disabled (not available)'}[/dim]")
-    
+    extractor = BillExtractor()
     results: list[tuple[str, ExtractedBill]] = []
 
     with Progress(
@@ -125,7 +114,7 @@ def main(
 
         for img_file in image_files:
             file_task = progress.add_task(f"[dim]{img_file.name}[/dim]", total=5, parent=main_task)
-            
+
             progress.update(file_task, description=f"[cyan]Loading models for {img_file.name}...", completed=0)
             logger.info(f"Processing: {img_file.name}")
 
@@ -133,53 +122,31 @@ def main(
                 if preprocess:
                     progress.update(file_task, description=f"[cyan]Preprocessing {img_file.name}...", completed=1)
                     logger.info("Preprocessing image...")
-                    
+
                     if not PREPROCESS_AVAILABLE:
                         console.print("[bold yellow]Warning:[/bold yellow] opencv-python not installed, skipping preprocessing")
                         processed = None
                     else:
                         processed = preprocessing_pipeline(str(img_file))
-                        logger.info(f"Preprocessing complete")
-                    
+                        logger.info("Preprocessing complete")
+
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
                     if processed is not None:
-                        ocr_results = ocr_engine.read_text_from_array(processed)
+                        ocr_results = ocr_engine.extract_text_from_array(processed)
                     else:
-                        ocr_results = ocr_engine.read_text(str(img_file))
+                        ocr_results = ocr_engine.extract_text(str(img_file))
                 else:
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
-                    ocr_results = ocr_engine.read_text(str(img_file))
-                
+                    ocr_results = ocr_engine.extract_text(str(img_file))
+
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
                 progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
-                
-                ocr_text = " ".join(r.get("text", "") for r in ocr_results)
-                bill_data = extractor.extract(ocr_results)
-                
-                if ollama_client and ollama_client.is_available:
-                    extracted_dict = {
-                        "date": str(bill_data.date) if bill_data.date else None,
-                        "amount": bill_data.total,
-                        "invoice_number": bill_data.invoice_number,
-                        "_confidence": 0.85,
-                    }
-                    improved = ollama_client.post_process(ocr_text, extracted_dict)
-                    if improved.get("_post_processed"):
-                        logger.info(f"Ollama improved extraction for {img_file.name}")
-                        if improved.get("date"):
-                            try:
-                                bill_data.date = date.fromisoformat(improved["date"])
-                            except (ValueError, TypeError):
-                                pass
-                        if improved.get("amount") and isinstance(improved["amount"], (int, float)):
-                            bill_data.total = float(improved["amount"])
-                        if improved.get("invoice_number"):
-                            bill_data.invoice_number = improved["invoice_number"]
-                
+                ocr_dicts = _convert_ocr_results(ocr_results)
+                bill_data = extractor.extract(ocr_dicts)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
-                
+
                 progress.update(file_task, description=f"[cyan]Saved {img_file.name}", completed=5)
                 logger.info(f"Complete: {img_file.name}")
 
@@ -241,21 +208,44 @@ def _display_results(results: list[tuple[str, ExtractedBill]], verbose: bool):
                 console.print(f"  Subtotal: {bill.subtotal:.2f}")
 
 
+def _format_json_output(bill: ExtractedBill, filename: str) -> dict:
+    """Format bill data into the required JSON output format."""
+    output = {}
+
+    if bill.date:
+        output["date"] = bill.date.isoformat()
+    else:
+        logger.warning(f"Missing date for {filename}")
+        output["date"] = None
+
+    if bill.total is not None:
+        output["amount"] = round(bill.total, 2)
+    else:
+        logger.warning(f"Missing amount for {filename}")
+        output["amount"] = None
+
+    if bill.invoice_number:
+        output["id"] = bill.invoice_number
+    else:
+        logger.warning(f"Missing invoice number (id) for {filename}")
+        output["id"] = None
+
+    return output
+
+
 def _save_results(results: list[tuple[str, ExtractedBill]], output_dir: Path):
     """Save results to output directory."""
     for filename, bill in results:
         output_file = output_dir / f"{Path(filename).stem}.json"
+        output = _format_json_output(bill, filename)
         with open(output_file, "w") as f:
-            json.dump(bill.model_dump(mode="json"), f, indent=2, default=str)
+            json.dump(output, f, indent=2)
 
 
 def _print_json_output(results: list[tuple[str, ExtractedBill]]):
     """Print results as JSON to stdout."""
-    output = [
-        {"file": filename, "data": bill.model_dump(mode="json")}
-        for filename, bill in results
-    ]
-    console.print_json(json.dumps(output, indent=2, default=str))
+    output = [_format_json_output(bill, filename) for filename, bill in results]
+    console.print_json(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":
