@@ -1,6 +1,5 @@
 """Tests for OCR module."""
 
-import pytest
 
 
 class TestBillOCRDefaults:
@@ -8,24 +7,21 @@ class TestBillOCRDefaults:
 
     def test_default_lang_is_french(self):
         """Default language is French."""
-        from bill_extract.ocr import BillOCR
-        from bill_extract.ocr import PADDLE_AVAILABLE
+        from bill_extract.ocr import PADDLE_AVAILABLE, BillOCR
         if PADDLE_AVAILABLE:
             ocr = BillOCR()
             assert ocr.lang == "fr"
 
     def test_default_use_gpu_is_false(self):
         """Default use_gpu is False."""
-        from bill_extract.ocr import BillOCR
-        from bill_extract.ocr import PADDLE_AVAILABLE
+        from bill_extract.ocr import PADDLE_AVAILABLE, BillOCR
         if PADDLE_AVAILABLE:
             ocr = BillOCR()
             assert ocr.use_gpu is False
 
     def test_default_use_angle_cls_is_true(self):
         """Default use_angle_cls is True."""
-        from bill_extract.ocr import BillOCR
-        from bill_extract.ocr import PADDLE_AVAILABLE
+        from bill_extract.ocr import PADDLE_AVAILABLE, BillOCR
         if PADDLE_AVAILABLE:
             ocr = BillOCR()
             assert ocr.use_angle_cls is True
@@ -41,7 +37,7 @@ class TestOCREngineAlias:
 
     def test_ocr_engine_is_bill_ocr(self):
         """OCREngine is BillOCR."""
-        from bill_extract.ocr import OCREngine, BillOCR
+        from bill_extract.ocr import BillOCR, OCREngine
         assert OCREngine == BillOCR
 
 

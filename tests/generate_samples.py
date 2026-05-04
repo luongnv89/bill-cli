@@ -2,8 +2,8 @@
 """Generate synthetic sample invoice images for testing."""
 
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
-import random
 
 SAMPLES_DIR = Path(__file__).parent / "samples"
 SAMPLES_DIR.mkdir(exist_ok=True)
