@@ -150,6 +150,8 @@ def main(
 
             progress.update(main_task, advance=1)
 
+    _print_batch_summary(results, len(image_files))
+
     if output_dir:
         logger.info(f"Saving results to {output_dir}")
         _save_results(results, output_dir)
@@ -246,6 +248,21 @@ def _save_results(results: list[tuple[str, ExtractedBill]], output_dir: Path):
         output = _format_json_output(bill, filename)
         with open(output_file, "w") as f:
             json.dump(output, f, indent=2)
+
+
+def _print_batch_summary(results: list[tuple[str, ExtractedBill]], total: int):
+    """Print batch processing summary with success/failure counts."""
+    successful = sum(1 for _, bill in results if bill.vendor is not None or bill.total is not None)
+    failed = total - successful
+    
+    console.print()
+    console.print("[bold]Batch Processing Summary[/bold]")
+    console.print(f"  Total files processed: [cyan]{total}[/cyan]")
+    console.print(f"  Successful: [green]{successful}[/green]")
+    if failed > 0:
+        console.print(f"  Failed: [red]{failed}[/red]")
+    else:
+        console.print(f"  Failed: [green]{failed}[/green]")
 
 
 def _print_json_output(results: list[tuple[str, ExtractedBill]]):

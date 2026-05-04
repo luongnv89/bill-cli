@@ -228,3 +228,46 @@ class TestFormatJsonOutput:
         assert "Missing date" in caplog.text
         assert "Missing amount" in caplog.text
         assert "Missing invoice number" in caplog.text
+
+
+class TestBatchSummary:
+    """Test batch summary output."""
+
+    def test_batch_summary_all_successful(self):
+        """Test batch summary with all successful extractions."""
+        from datetime import date
+        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import _print_batch_summary
+        from unittest.mock import patch, Mock
+
+        bill = ExtractedBill(
+            vendor="Test Vendor",
+            date=date(2026, 4, 15),
+            invoice_number="INV-001",
+            total=100.0,
+            currency="EUR"
+        )
+        results = [("test1.png", bill), ("test2.png", bill)]
+
+        with patch("bill_extract.main.console", new=Mock()) as mock_console:
+            _print_batch_summary(results, 2)
+            mock_console.print.assert_called()
+            call_args = str(mock_console.print.call_args_list)
+            assert "Total files processed: 2" in call_args
+            assert "Successful: 2" in call_args
+
+    def test_batch_summary_with_failures(self):
+        """Test batch summary with failed extractions."""
+        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import _print_batch_summary, _create_empty_bill
+        from unittest.mock import patch, Mock
+
+        bill_success = ExtractedBill(vendor="Test", total=100.0, currency="EUR")
+        bill_failed = _create_empty_bill()
+        results = [("test1.png", bill_success), ("test2.png", bill_failed)]
+
+        with patch("bill_extract.main.console", new=Mock()) as mock_console:
+            _print_batch_summary(results, 2)
+            call_args = str(mock_console.print.call_args_list)
+            assert "Successful: 1" in call_args
+            assert "Failed: 1" in call_args
