@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Optional, Annotated
 
@@ -24,6 +25,7 @@ except ImportError:
 from bill_extract.extractor import BillExtractor, ExtractedBill
 from bill_extract.ocr import OCREngine, FIRST_LOAD as OCR_FIRST_LOAD
 from bill_extract.config import load_patterns
+from bill_extract.ollama_client import OllamaClient, load_ollama_config, OllamaConfig
 
 app = typer.Typer(name="bill-extract")
 console = Console()
@@ -37,6 +39,7 @@ PreprocessArg = Annotated[bool, typer.Option("--preprocess", "-p", help="Enable 
 VerboseArg = Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")]
 DebugArg = Annotated[bool, typer.Option("--debug", "-d", help="Enable debug output")]
 PatternsArg = Annotated[Optional[str], typer.Option("--patterns", help="Path to custom patterns YAML file")]
+OllamaArg = Annotated[bool, typer.Option("--ollama", help="Enable Ollama post-processing")]
 
 
 @app.command()
@@ -48,6 +51,7 @@ def main(
     verbose: VerboseArg = False,
     debug: DebugArg = False,
     patterns: PatternsArg = None,
+    ollama: OllamaArg = False,
 ):
     """Extract information from bills and invoices."""
     log_level = "DEBUG" if debug else "INFO"
@@ -99,6 +103,15 @@ def main(
             console.print("[dim]Using default patterns[/dim]")
 
     extractor = BillExtractor(pattern_config)
+    
+    ollama_client = None
+    if ollama:
+        ollama_config = OllamaConfig(enabled=True)
+        ollama_client = OllamaClient(ollama_config)
+        if verbose:
+            available = ollama_client.is_available
+            console.print(f"[dim]Ollama post-processing: {'enabled' if available else 'disabled (not available)'}[/dim]")
+    
     results: list[tuple[str, ExtractedBill]] = []
 
     with Progress(
@@ -140,7 +153,30 @@ def main(
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
                 progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
+                
+                ocr_text = " ".join(r.get("text", "") for r in ocr_results)
                 bill_data = extractor.extract(ocr_results)
+                
+                if ollama_client and ollama_client.is_available:
+                    extracted_dict = {
+                        "date": str(bill_data.date) if bill_data.date else None,
+                        "amount": bill_data.total,
+                        "invoice_number": bill_data.invoice_number,
+                        "_confidence": 0.85,
+                    }
+                    improved = ollama_client.post_process(ocr_text, extracted_dict)
+                    if improved.get("_post_processed"):
+                        logger.info(f"Ollama improved extraction for {img_file.name}")
+                        if improved.get("date"):
+                            try:
+                                bill_data.date = date.fromisoformat(improved["date"])
+                            except (ValueError, TypeError):
+                                pass
+                        if improved.get("amount") and isinstance(improved["amount"], (int, float)):
+                            bill_data.total = float(improved["amount"])
+                        if improved.get("invoice_number"):
+                            bill_data.invoice_number = improved["invoice_number"]
+                
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
                 
