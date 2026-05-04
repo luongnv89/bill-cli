@@ -1,8 +1,9 @@
 """Tests for image preprocessing module."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch
 
 
 @pytest.fixture

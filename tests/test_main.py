@@ -2,8 +2,7 @@
 
 import json
 import logging
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -88,7 +87,7 @@ class TestDisplayResults:
 
     def test_display_results_table(self):
         """Test table display."""
-        from bill_extract.extractor import ExtractedBill, BillItem
+        from bill_extract.extractor import BillItem, ExtractedBill
         from bill_extract.main import _display_results
 
         bill = ExtractedBill(
@@ -111,6 +110,7 @@ class TestSaveResults:
     def test_save_results_json(self, tmp_path):
         """Test saving results to JSON in simplified format."""
         from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _save_results
 
@@ -162,6 +162,7 @@ class TestPrintJsonOutput:
     def test_print_json_output(self):
         """Test JSON output to stdout."""
         from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _print_json_output
 
@@ -201,6 +202,7 @@ class TestFormatJsonOutput:
     def test_format_json_complete(self):
         """Test formatting complete bill data."""
         from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _format_json_output
 

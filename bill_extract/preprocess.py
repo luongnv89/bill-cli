@@ -1,9 +1,10 @@
 """Image preprocessing utilities."""
 
+from typing import Tuple
+
 import cv2
 import numpy as np
 from PIL import Image
-from typing import Tuple, Optional
 
 
 def load_image(image_path: str) -> np.ndarray:

@@ -1,8 +1,6 @@
 """OCR functionality using PaddleOCR."""
 
-import logging
 import time
-from typing import Any
 
 try:
     from paddleocr import PaddleOCR
