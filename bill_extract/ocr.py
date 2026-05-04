@@ -1,5 +1,7 @@
 """OCR functionality using PaddleOCR."""
 
+import logging
+import time
 from typing import Any, Optional
 
 try:
@@ -7,6 +9,12 @@ try:
     PADDLE_AVAILABLE = True
 except ImportError:
     PADDLE_AVAILABLE = False
+
+from bill_extract.logging import get_logger
+
+logger = get_logger("bill_extract.ocr")
+
+FIRST_LOAD = True
 
 
 class OCREngine:
@@ -21,7 +29,17 @@ class OCREngine:
 
     def _get_ocr(self):
         if self._ocr is None:
+            global FIRST_LOAD
+            if FIRST_LOAD:
+                logger.info("[bold cyan]Loading PaddleOCR models...[/bold cyan]")
+                logger.info("[dim]First time loading may take a few minutes[/dim]")
+                FIRST_LOAD = False
+            
+            start = time.time()
             self._ocr = PaddleOCR(use_angle_cls=self.use_angle_cls, lang=self.lang, show_log=False)
+            elapsed = time.time() - start
+            logger.info(f"[green]OCR models loaded in {elapsed:.1f}s[/green]")
+            
         return self._ocr
 
     def read_text(self, image_path: str) -> list[dict[str, Any]]:

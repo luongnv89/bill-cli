@@ -9,8 +9,10 @@ from typing import Optional, Annotated
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.table import Table
+
+from bill_extract.logging import setup_logging, get_logger
 
 try:
     from bill_extract.preprocess import preprocessing_pipeline
@@ -20,10 +22,12 @@ except ImportError:
     preprocessing_pipeline = None
 
 from bill_extract.extractor import BillExtractor, ExtractedBill
-from bill_extract.ocr import OCREngine
+from bill_extract.ocr import OCREngine, FIRST_LOAD as OCR_FIRST_LOAD
 
 app = typer.Typer(name="bill-extract")
 console = Console()
+
+logger = get_logger("bill_extract")
 
 InputArg = Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")]
 OutputArg = Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory (default: stdout)")]
@@ -43,10 +47,9 @@ def main(
     debug: DebugArg = False,
 ):
     """Extract information from bills and invoices."""
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-        verbose = True
-
+    log_level = "DEBUG" if debug else "INFO"
+    setup_logging(level=log_level)
+    
     if not input:
         console.print("[bold red]Error:[/bold red] --input is required")
         raise typer.Exit(code=1)
@@ -75,6 +78,8 @@ def main(
     if verbose:
         console.print(f"[dim]Processing {len(image_files)} file(s)[/dim]")
 
+    logger.info("[bold]Starting bill extraction...[/bold]")
+
     try:
         ocr_engine = OCREngine(lang=lang)
     except ImportError as e:
@@ -87,43 +92,61 @@ def main(
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task("Extracting bills...", total=len(image_files))
+        main_task = progress.add_task("[cyan]Processing files...", total=len(image_files))
 
         for img_file in image_files:
-            if verbose:
-                console.print(f"[dim]Processing: {img_file.name}[/dim]")
+            file_task = progress.add_task(f"[dim]{img_file.name}[/dim]", total=5, parent=main_task)
+            
+            progress.update(file_task, description=f"[cyan]Loading models for {img_file.name}...", completed=0)
+            logger.info(f"Processing: {img_file.name}")
 
             try:
                 if preprocess:
+                    progress.update(file_task, description=f"[cyan]Preprocessing {img_file.name}...", completed=1)
+                    logger.info("Preprocessing image...")
+                    
                     if not PREPROCESS_AVAILABLE:
                         console.print("[bold yellow]Warning:[/bold yellow] opencv-python not installed, skipping preprocessing")
+                        processed = None
                     else:
-                        if verbose:
-                            console.print(f"[dim]  Preprocessing...[/dim]")
                         processed = preprocessing_pipeline(str(img_file))
+                        logger.info(f"Preprocessing complete")
+                    
+                    progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
+                    if processed is not None:
                         ocr_results = ocr_engine.read_text_from_array(processed)
+                    else:
+                        ocr_results = ocr_engine.read_text(str(img_file))
                 else:
+                    progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
                     ocr_results = ocr_engine.read_text(str(img_file))
+                
+                logger.info(f"OCR found {len(ocr_results)} text regions")
 
-                if verbose:
-                    console.print(f"[dim]  OCR: {len(ocr_results)} text regions found[/dim]")
-
+                progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
                 bill_data = extractor.extract(ocr_results)
+                logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
+                
+                progress.update(file_task, description=f"[cyan]Saved {img_file.name}", completed=5)
+                logger.info(f"Complete: {img_file.name}")
 
             except Exception as e:
                 console.print(f"[bold red]Error processing {img_file.name}:[/bold red] {e}")
+                logger.error(f"Failed to process {img_file.name}: {e}")
                 if debug:
                     raise
 
-            progress.update(task, advance=1)
-
-    _display_results(results, verbose)
+            progress.update(main_task, advance=1)
 
     if output_dir:
+        logger.info(f"Saving results to {output_dir}")
         _save_results(results, output_dir)
+        logger.info("[green]Results saved successfully[/green]")
         console.print(f"[bold green]Results saved to:[/bold green] {output_dir}")
     else:
         _print_json_output(results)
