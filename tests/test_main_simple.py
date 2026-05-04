@@ -23,7 +23,7 @@ def test_cli_help(capsys):
 
 
 def test_cli_requires_input():
-    """Test that --input is required."""
+    """Test that running without args shows help."""
     if "bill_extract.main" not in sys.modules:
         import importlib
         import bill_extract.main
@@ -32,7 +32,7 @@ def test_cli_requires_input():
     from typer.testing import CliRunner
     runner = CliRunner()
     result = runner.invoke(app, [])
-    assert result.exit_code == 1
+    assert result.exit_code == 0
 
 
 def test_collect_images():

@@ -24,8 +24,6 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "paddleocr>=2.7.0",
-    "paddlepaddle>=2.5.0",
     "rich>=13.0.0",
     "tqdm>=4.65.0",
     "pillow>=10.0.0",
@@ -35,6 +33,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ocr = [
+    "paddleocr>=2.7.0",
+    "paddlepaddle>=2.5.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -44,7 +46,7 @@ dev = [
 ]
 
 [project.scripts]
-bill-extract = "bill_extract.main:main"
+bill-extract = "bill_extract.main:app"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Annotated
+from typing import Annotated, Optional
 
 import typer
 from rich.console import Console
@@ -13,6 +13,8 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from rich.table import Table
 
 from bill_extract.logging import setup_logging, get_logger
+from bill_extract.ocr import OCREngine, FIRST_LOAD as OCR_FIRST_LOAD, PADDLE_AVAILABLE
+from bill_extract.ocr import CorruptImageError, NoTextDetectedError
 
 try:
     from bill_extract.preprocess import preprocessing_pipeline
@@ -22,30 +24,19 @@ except ImportError:
     preprocessing_pipeline = None
 
 from bill_extract.extractor import BillExtractor, ExtractedBill
-from bill_extract.ocr import OCREngine, FIRST_LOAD as OCR_FIRST_LOAD
-from bill_extract.ocr import CorruptImageError, NoTextDetectedError
 
-app = typer.Typer(name="bill-extract")
-console = Console()
-
-logger = get_logger("bill_extract")
-
-InputArg = Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")]
-OutputArg = Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory (default: stdout)")]
-LangArg = Annotated[str, typer.Option("--lang", "-l", help="OCR language")]
-PreprocessArg = Annotated[bool, typer.Option("--preprocess", "-p", help="Enable image preprocessing")]
-VerboseArg = Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")]
-DebugArg = Annotated[bool, typer.Option("--debug", "-d", help="Enable debug output")]
+app = typer.Typer(name="bill-extract", add_completion=False, no_args_is_help=True)
 
 
-@app.command()
+@app.callback()
 def main(
-    input: InputArg = None,
-    output: OutputArg = None,
-    lang: LangArg = "fr",
-    preprocess: PreprocessArg = False,
-    verbose: VerboseArg = False,
-    debug: DebugArg = False,
+    ctx: typer.Context,
+    input: Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")] = None,
+    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory")] = None,
+    lang: Annotated[str, typer.Option("--lang", "-l", help="OCR language")] = "fr",
+    preprocess: Annotated[bool, typer.Option("--preprocess", "-p", help="Enable preprocessing")] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Verbose output")] = False,
+    debug: Annotated[bool, typer.Option("--debug", "-d", help="Debug output")] = False,
 ):
     """Extract information from bills and invoices."""
     log_level = "DEBUG" if debug else "INFO"
@@ -53,6 +44,7 @@ def main(
     
     if not input:
         console.print("[bold red]Error:[/bold red] --input is required")
+        console.print("Use bill-extract --help for usage information")
         raise typer.Exit(code=1)
 
     input_path = Path(input)
@@ -115,7 +107,7 @@ def main(
                         processed = None
                     else:
                         processed = preprocessing_pipeline(str(img_file))
-                        logger.info(f"Preprocessing complete")
+                        logger.info("Preprocessing complete")
                     
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
                     if processed is not None:
