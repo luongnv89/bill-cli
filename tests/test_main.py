@@ -2,8 +2,7 @@
 
 import json
 import logging
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -40,6 +39,7 @@ class TestCLI:
     def test_cli_help(self, runner):
         """Test --help output."""
         from bill_extract.main import app
+
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
         assert "bill-extract" in result.stdout.lower()
@@ -47,6 +47,7 @@ class TestCLI:
     def test_cli_requires_input(self, runner):
         """Test that --input is required."""
         from bill_extract.main import app
+
         result = runner.invoke(app, [])
         assert result.exit_code == 1
         assert "required" in result.stdout.lower()
@@ -88,7 +89,7 @@ class TestDisplayResults:
 
     def test_display_results_table(self):
         """Test table display."""
-        from bill_extract.extractor import ExtractedBill, BillItem
+        from bill_extract.extractor import BillItem, ExtractedBill
         from bill_extract.main import _display_results
 
         bill = ExtractedBill(
@@ -111,6 +112,7 @@ class TestSaveResults:
     def test_save_results_json(self, tmp_path):
         """Test saving results to JSON in simplified format."""
         from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _save_results
 
@@ -119,7 +121,7 @@ class TestSaveResults:
             date=date(2026, 4, 15),
             invoice_number="FACT-987654",
             total=245.80,
-            currency="EUR"
+            currency="EUR",
         )
         results = [("test.png", bill)]
         output_dir = tmp_path / "output"
@@ -162,6 +164,7 @@ class TestPrintJsonOutput:
     def test_print_json_output(self):
         """Test JSON output to stdout."""
         from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _print_json_output
 
@@ -170,7 +173,7 @@ class TestPrintJsonOutput:
             date=date(2026, 4, 15),
             invoice_number="FACT-987654",
             total=245.80,
-            currency="EUR"
+            currency="EUR",
         )
         results = [("test.png", bill)]
 
@@ -201,14 +204,11 @@ class TestFormatJsonOutput:
     def test_format_json_complete(self):
         """Test formatting complete bill data."""
         from datetime import date
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _format_json_output
 
-        bill = ExtractedBill(
-            date=date(2026, 4, 15),
-            invoice_number="FACT-987654",
-            total=245.80
-        )
+        bill = ExtractedBill(date=date(2026, 4, 15), invoice_number="FACT-987654", total=245.80)
         result = _format_json_output(bill, "test.png")
 
         assert result == {"date": "2026-04-15", "amount": 245.80, "id": "FACT-987654"}
@@ -236,16 +236,17 @@ class TestBatchSummary:
     def test_batch_summary_all_successful(self):
         """Test batch summary with all successful extractions."""
         from datetime import date
+        from unittest.mock import Mock, patch
+
         from bill_extract.extractor import ExtractedBill
         from bill_extract.main import _print_batch_summary
-        from unittest.mock import patch, Mock
 
         bill = ExtractedBill(
             vendor="Test Vendor",
             date=date(2026, 4, 15),
             invoice_number="INV-001",
             total=100.0,
-            currency="EUR"
+            currency="EUR",
         )
         results = [("test1.png", bill), ("test2.png", bill)]
 
@@ -258,9 +259,10 @@ class TestBatchSummary:
 
     def test_batch_summary_with_failures(self):
         """Test batch summary with failed extractions."""
+        from unittest.mock import Mock, patch
+
         from bill_extract.extractor import ExtractedBill
-        from bill_extract.main import _print_batch_summary, _create_empty_bill
-        from unittest.mock import patch, Mock
+        from bill_extract.main import _create_empty_bill, _print_batch_summary
 
         bill_success = ExtractedBill(vendor="Test", total=100.0, currency="EUR")
         bill_failed = _create_empty_bill()

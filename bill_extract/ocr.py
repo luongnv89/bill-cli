@@ -1,12 +1,11 @@
 """OCR functionality using PaddleOCR."""
 
-import logging
 import time
 from pathlib import Path
-from typing import Any
 
 try:
     from paddleocr import PaddleOCR
+
     PADDLE_AVAILABLE = True
 except ImportError:
     PADDLE_AVAILABLE = False
@@ -20,16 +19,19 @@ FIRST_LOAD = True
 
 class OCRError(Exception):
     """Base exception for OCR errors."""
+
     pass
 
 
 class CorruptImageError(OCRError):
     """Raised when image file is corrupt or unreadable."""
+
     pass
 
 
 class NoTextDetectedError(OCRError):
     """Raised when OCR detects no text in the image."""
+
     pass
 
 
@@ -45,7 +47,9 @@ class BillOCR:
             use_gpu: Use GPU acceleration (default: False for CPU mode).
         """
         if not PADDLE_AVAILABLE:
-            raise ImportError("paddlepaddle and paddleocr are required. Install with: pip install paddlepaddle paddleocr")
+            raise ImportError(
+                "paddlepaddle and paddleocr are required. Install with: pip install paddlepaddle paddleocr"
+            )
         self.use_angle_cls = use_angle_cls
         self.lang = lang
         self.use_gpu = use_gpu
@@ -60,7 +64,12 @@ class BillOCR:
                 FIRST_LOAD = False
 
             start = time.time()
-            self._ocr = PaddleOCR(use_angle_cls=self.use_angle_cls, lang=self.lang, use_gpu=self.use_gpu, show_log=False)
+            self._ocr = PaddleOCR(
+                use_angle_cls=self.use_angle_cls,
+                lang=self.lang,
+                use_gpu=self.use_gpu,
+                show_log=False,
+            )
             elapsed = time.time() - start
             logger.info(f"[green]OCR models loaded in {elapsed:.1f}s[/green]")
 
@@ -85,6 +94,7 @@ class BillOCR:
 
         try:
             from PIL import Image
+
             with Image.open(image_path) as img:
                 img.verify()
         except Exception as e:
@@ -119,7 +129,9 @@ class BillOCR:
             )
 
         if not result or not result[0]:
-            logger.warning(f"OCR returned no text for {image_path}. Try preprocessing or use a better quality image.")
+            logger.warning(
+                f"OCR returned no text for {image_path}. Try preprocessing or use a better quality image."
+            )
             raise NoTextDetectedError(
                 f"OCR returned no text for {image_path}. "
                 f"Try preprocessing or use a better quality screenshot."
@@ -137,9 +149,7 @@ class BillOCR:
 
         return ocr_results
 
-    def extract_text_from_array(
-        self, image_array
-    ) -> list[tuple[list, tuple[str, float]]]:
+    def extract_text_from_array(self, image_array) -> list[tuple[list, tuple[str, float]]]:
         """Extract text from a numpy array.
 
         Args:
@@ -157,12 +167,13 @@ class BillOCR:
         except Exception as e:
             logger.error(f"OCR processing failed for array input: {e}")
             raise CorruptImageError(
-                f"Failed to process image array: {str(e)}. "
-                f"The image data may be corrupted."
+                f"Failed to process image array: {str(e)}. The image data may be corrupted."
             )
 
         if not result or not result[0]:
-            logger.warning("OCR returned no text from preprocessed image. Try a better quality original image.")
+            logger.warning(
+                "OCR returned no text from preprocessed image. Try a better quality original image."
+            )
             raise NoTextDetectedError(
                 "OCR returned no text from preprocessed image. "
                 "Try a better quality original image or adjust preprocessing."

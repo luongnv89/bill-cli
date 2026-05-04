@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class BillItem(BaseModel):
     """Individual line item from a bill."""
+
     description: str
     quantity: float = 1.0
     unit_price: Optional[float] = None
@@ -21,6 +22,7 @@ class BillItem(BaseModel):
 
 class ExtractedBill(BaseModel):
     """Extracted bill/invoice information."""
+
     vendor: Optional[str] = None
     date: Optional[date_type] = None
     invoice_number: Optional[str] = None
@@ -33,6 +35,7 @@ class ExtractedBill(BaseModel):
 
 class FieldExtractionResult(BaseModel):
     """Result of field extraction with confidence scoring."""
+
     value: Optional[str | float] = None
     confidence: float = 0.0
     matched_text: str = ""
@@ -49,8 +52,11 @@ class FieldExtractor:
     """Extract structured fields from French bill OCR text."""
 
     FRENCH_DATE_KEYWORDS = [
-        r"date", r"facturé le", r"date de facturation",
-        r"date d'émission", r"émis le"
+        r"date",
+        r"facturé le",
+        r"date de facturation",
+        r"date d'émission",
+        r"émis le",
     ]
 
     FRENCH_DATE_PATTERNS = [
@@ -60,8 +66,12 @@ class FieldExtractor:
     ]
 
     FRENCH_AMOUNT_TTC_KEYWORDS = [
-        r"total ttc", r"montant total", r"montant à payer",
-        r"total à régler", r"total ttc", r"ttc"
+        r"total ttc",
+        r"montant total",
+        r"montant à payer",
+        r"total à régler",
+        r"total ttc",
+        r"ttc",
     ]
 
     FRENCH_AMOUNT_PATTERNS = [
@@ -70,8 +80,12 @@ class FieldExtractor:
     ]
 
     FRENCH_BILL_ID_KEYWORDS = [
-        r"numéro de facture", r"n° facture", r"facture n°",
-        r"référence", r"réf\.", r"numéro"
+        r"numéro de facture",
+        r"n° facture",
+        r"facture n°",
+        r"référence",
+        r"réf\.",
+        r"numéro",
     ]
 
     FRENCH_BILL_ID_PATTERNS = [
@@ -84,13 +98,9 @@ class FieldExtractor:
     def __init__(self):
         self._confidence_threshold = 0.6
 
-    def extract_date(
-        self, ocr_results: list[dict[str, Any]]
-    ) -> FieldExtractionResult:
+    def extract_date(self, ocr_results: list[dict[str, Any]]) -> FieldExtractionResult:
         """Extract date from OCR results with French patterns."""
-        sorted_results = sorted(
-            ocr_results, key=lambda r: r.get("y_center", 0)
-        )
+        sorted_results = sorted(ocr_results, key=lambda r: r.get("y_center", 0))
 
         candidates = []
         for result in sorted_results:
@@ -121,7 +131,7 @@ class FieldExtractor:
             return FieldExtractionResult(
                 value=best[0].isoformat(),
                 confidence=min(best[1] + 0.1, 1.0),
-                matched_text=best[2].strip()
+                matched_text=best[2].strip(),
             )
 
         fallback_result = self._fallback_date(sorted_results)
@@ -136,13 +146,9 @@ class FieldExtractor:
         logger.warning("No date found in OCR results")
         return FieldExtractionResult(value=None, confidence=0.0, matched_text="")
 
-    def extract_amount_ttc(
-        self, ocr_results: list[dict[str, Any]]
-    ) -> FieldExtractionResult:
+    def extract_amount_ttc(self, ocr_results: list[dict[str, Any]]) -> FieldExtractionResult:
         """Extract TTC amount from OCR results with French patterns."""
-        sorted_results = sorted(
-            ocr_results, key=lambda r: r.get("y_center", float("inf"))
-        )
+        sorted_results = sorted(ocr_results, key=lambda r: r.get("y_center", float("inf")))
         text_lines = [(r.get("text", ""), r.get("confidence", 0.8)) for r in sorted_results]
 
         candidates = []
@@ -169,9 +175,7 @@ class FieldExtractor:
                     f"Low confidence amount extraction: {best[0]:.2f} (confidence: {best[1]:.2f})"
                 )
             return FieldExtractionResult(
-                value=best[0],
-                confidence=min(best[1] + 0.1, 1.0),
-                matched_text=best[2].strip()
+                value=best[0], confidence=min(best[1] + 0.1, 1.0), matched_text=best[2].strip()
             )
 
         fallback_result = self._fallback_amount(text_lines)
@@ -186,13 +190,9 @@ class FieldExtractor:
         logger.warning("No TTC amount found in OCR results")
         return FieldExtractionResult(value=None, confidence=0.0, matched_text="")
 
-    def extract_bill_id(
-        self, ocr_results: list[dict[str, Any]]
-    ) -> FieldExtractionResult:
+    def extract_bill_id(self, ocr_results: list[dict[str, Any]]) -> FieldExtractionResult:
         """Extract bill ID from OCR results with French patterns."""
-        sorted_results = sorted(
-            ocr_results, key=lambda r: r.get("y_center", 0)
-        )
+        sorted_results = sorted(ocr_results, key=lambda r: r.get("y_center", 0))
 
         candidates = []
         for result in sorted_results:
@@ -219,9 +219,7 @@ class FieldExtractor:
                     f"Low confidence bill ID extraction: {best[0]} (confidence: {best[1]:.2f})"
                 )
             return FieldExtractionResult(
-                value=best[0],
-                confidence=min(best[1] + 0.1, 1.0),
-                matched_text=best[2].strip()
+                value=best[0], confidence=min(best[1] + 0.1, 1.0), matched_text=best[2].strip()
             )
 
         fallback_result = self._fallback_bill_id(sorted_results)
@@ -240,8 +238,16 @@ class FieldExtractor:
         """Parse date string to date object."""
         date_str = date_str.strip()
 
-        for fmt in ["%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y", "%d-%m-%y",
-                    "%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d", "%Y/%m/%d"]:
+        for fmt in [
+            "%d/%m/%Y",
+            "%d/%m/%y",
+            "%d-%m-%Y",
+            "%d-%m-%y",
+            "%d.%m.%Y",
+            "%d.%m.%y",
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+        ]:
             try:
                 return datetime.strptime(date_str, fmt).date()
             except ValueError:
@@ -249,6 +255,7 @@ class FieldExtractor:
 
         try:
             from dateutil import parser
+
             return parser.parse(date_str, dayfirst=True).date()
         except ImportError:
             pass
@@ -285,9 +292,7 @@ class FieldExtractor:
                 parsed = self._parse_date(match.group(1))
                 if parsed:
                     return FieldExtractionResult(
-                        value=parsed.isoformat(),
-                        confidence=confidence,
-                        matched_text=text.strip()
+                        value=parsed.isoformat(), confidence=confidence, matched_text=text.strip()
                     )
 
         return None
@@ -302,9 +307,7 @@ class FieldExtractor:
                 amount = self._extract_amount_from_line(text)
                 if amount:
                     return FieldExtractionResult(
-                        value=amount,
-                        confidence=conf * 0.5,
-                        matched_text=text.strip()
+                        value=amount, confidence=conf * 0.5, matched_text=text.strip()
                     )
 
         return None
@@ -331,16 +334,12 @@ class FieldExtractor:
             if match:
                 bill_id = self._normalize_id(match.group(1))
                 return FieldExtractionResult(
-                    value=bill_id,
-                    confidence=confidence,
-                    matched_text=text.strip()
+                    value=bill_id, confidence=confidence, matched_text=text.strip()
                 )
 
         return None
 
-    def extract_all(
-        self, ocr_results: list[dict[str, Any]]
-    ) -> dict[str, FieldExtractionResult]:
+    def extract_all(self, ocr_results: list[dict[str, Any]]) -> dict[str, FieldExtractionResult]:
         """Extract all fields from OCR results."""
         return {
             "date": self.extract_date(ocr_results),
@@ -379,9 +378,7 @@ class BillExtractor:
 
         return bill
 
-    def extract_fields(
-        self, ocr_results: list[dict[str, Any]]
-    ) -> dict[str, FieldExtractionResult]:
+    def extract_fields(self, ocr_results: list[dict[str, Any]]) -> dict[str, FieldExtractionResult]:
         """Extract fields with French patterns and confidence scoring."""
         return self.field_extractor.extract_all(ocr_results)
 
@@ -441,4 +438,3 @@ class BillExtractor:
             except ValueError:
                 pass
         return None
-

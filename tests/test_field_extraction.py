@@ -238,6 +238,7 @@ class TestConfidenceScoring:
     def test_low_confidence_logs_warning(self, caplog):
         """Test low confidence triggers warning log."""
         import logging
+
         extractor = FieldExtractor()
         ocr_results = [
             {"text": "some date 15/03/2024", "confidence": 0.3, "y_center": 50},
@@ -256,9 +257,7 @@ class TestPydanticValidation:
     def test_field_extraction_result_validates(self):
         """Test FieldExtractionResult validates with Pydantic."""
         result = FieldExtractionResult(
-            value="2024-03-15",
-            confidence=0.85,
-            matched_text="Date: 15/03/2024"
+            value="2024-03-15", confidence=0.85, matched_text="Date: 15/03/2024"
         )
 
         assert result.value == "2024-03-15"
@@ -266,11 +265,7 @@ class TestPydanticValidation:
 
     def test_field_extraction_result_with_float(self):
         """Test FieldExtractionResult with float value."""
-        result = FieldExtractionResult(
-            value=125.50,
-            confidence=0.9,
-            matched_text="Total: 125,50"
-        )
+        result = FieldExtractionResult(value=125.50, confidence=0.9, matched_text="Total: 125,50")
 
         assert isinstance(result.value, float)
         assert result.value == 125.50
@@ -299,4 +294,3 @@ class TestBillExtractorIntegration:
         assert "date" in result
         assert "amount_ttc" in result
         assert "bill_id" in result
-

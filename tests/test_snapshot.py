@@ -2,10 +2,10 @@
 
 import json
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
 import pytest
 from typer.testing import CliRunner
-
 
 SAMPLES_DIR = Path(__file__).parent / "samples"
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
@@ -61,13 +61,14 @@ class TestSampleInvoiceExtraction:
     @pytest.mark.parametrize("sample_image", sorted(SAMPLES_DIR.glob("facture*.png")))
     def test_extract_sample_invoice_json_output(self, sample_image, runner, snapshot_dir):
         """Test extracting a sample invoice produces consistent JSON output."""
-        from bill_extract.main import app, _format_json_output
-        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import app
 
         with patch("bill_extract.main.console") as mock_console:
             mock_console.print_json = Mock()
 
-            result = runner.invoke(app, ["--input", str(sample_image), "--output", "/tmp/test_output"])
+            result = runner.invoke(
+                app, ["--input", str(sample_image), "--output", "/tmp/test_output"]
+            )
 
         if result.exit_code != 0:
             pytest.skip(f"OCR extraction failed for {sample_image.name}: {result.stdout}")
@@ -79,6 +80,7 @@ class TestSampleInvoiceExtraction:
 
         with patch("bill_extract.main.console"):
             from bill_extract.main import app
+
             result = runner.invoke(app, ["--input", str(sample), "--output", "/tmp/test_output"])
 
         if result.exit_code == 0 and output_file.exists():
@@ -88,7 +90,7 @@ class TestSampleInvoiceExtraction:
 
             expected = read_snapshot("facture1")
             if expected:
-                assert data == expected, f"Snapshot mismatch for facture1"
+                assert data == expected, "Snapshot mismatch for facture1"
         else:
             pytest.skip("Could not extract data from sample image")
 
@@ -98,6 +100,7 @@ class TestSampleInvoiceExtraction:
         assert sample.exists(), f"Sample file {sample} does not exist"
 
         from bill_extract.main import app
+
         result = runner.invoke(app, ["--input", str(sample)])
 
         assert result.exit_code in [0, 1], f"Unexpected exit code: {result.exit_code}"
@@ -108,11 +111,7 @@ class TestSnapshotComparison:
 
     def test_write_and_compare_snapshots(self, snapshot_dir):
         """Test that snapshots can be written and compared."""
-        test_data = {
-            "date": "2024-03-15",
-            "amount": 150.00,
-            "id": "FA2024-001"
-        }
+        test_data = {"date": "2024-03-15", "amount": 150.00, "id": "FA2024-001"}
 
         write_snapshot("test_snapshot", test_data)
         read_data = read_snapshot("test_snapshot")
@@ -121,11 +120,7 @@ class TestSnapshotComparison:
 
     def test_snapshot_with_null_values(self, snapshot_dir):
         """Test snapshot handles null/missing values."""
-        test_data = {
-            "date": None,
-            "amount": None,
-            "id": "FA2024-001"
-        }
+        test_data = {"date": None, "amount": None, "id": "FA2024-001"}
 
         write_snapshot("test_nulls", test_data)
         read_data = read_snapshot("test_nulls")

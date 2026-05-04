@@ -1,7 +1,5 @@
 """Utility functions."""
 
-import os
-import sys
 from pathlib import Path
 from typing import Optional
 
@@ -80,7 +78,8 @@ def format_amount(amount: float, currency: str = "USD") -> str:
 def setup_logging(level: str = "INFO") -> None:
     """Setup basic logging."""
     import logging
+
     logging.basicConfig(
         level=getattr(logging, level.upper()),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )

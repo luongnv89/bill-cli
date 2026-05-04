@@ -1,23 +1,19 @@
 """Bill extraction CLI tool."""
 
 import json
-import logging
-import os
-import sys
 from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
-from bill_extract.logging import setup_logging, get_logger
-from bill_extract.ocr import OCREngine, FIRST_LOAD as OCR_FIRST_LOAD, PADDLE_AVAILABLE
-from bill_extract.ocr import CorruptImageError, NoTextDetectedError
+from bill_extract.logging import setup_logging
+from bill_extract.ocr import CorruptImageError, NoTextDetectedError, OCREngine
 
 try:
     from bill_extract.preprocess import preprocessing_pipeline
+
     PREPROCESS_AVAILABLE = True
 except ImportError:
     PREPROCESS_AVAILABLE = False
@@ -31,17 +27,23 @@ app = typer.Typer(name="bill-extract", add_completion=False, no_args_is_help=Tru
 @app.callback()
 def main(
     ctx: typer.Context,
-    input: Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")] = None,
-    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory")] = None,
+    input: Annotated[
+        Optional[str], typer.Option("--input", "-i", help="Input file or folder path")
+    ] = None,
+    output: Annotated[
+        Optional[str], typer.Option("--output", "-o", help="Output directory")
+    ] = None,
     lang: Annotated[str, typer.Option("--lang", "-l", help="OCR language")] = "fr",
-    preprocess: Annotated[bool, typer.Option("--preprocess", "-p", help="Enable preprocessing")] = False,
+    preprocess: Annotated[
+        bool, typer.Option("--preprocess", "-p", help="Enable preprocessing")
+    ] = False,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Verbose output")] = False,
     debug: Annotated[bool, typer.Option("--debug", "-d", help="Debug output")] = False,
 ):
     """Extract information from bills and invoices."""
     log_level = "DEBUG" if debug else "INFO"
     setup_logging(level=log_level)
-    
+
     if not input:
         console.print("[bold red]Error:[/bold red] --input is required")
         console.print("Use bill-extract --help for usage information")
@@ -93,51 +95,71 @@ def main(
 
         for img_file in image_files:
             file_task = progress.add_task(f"[dim]{img_file.name}[/dim]", total=5, parent=main_task)
-            
-            progress.update(file_task, description=f"[cyan]Loading models for {img_file.name}...", completed=0)
+
+            progress.update(
+                file_task, description=f"[cyan]Loading models for {img_file.name}...", completed=0
+            )
             logger.info(f"Processing: {img_file.name}")
 
             try:
                 if preprocess:
-                    progress.update(file_task, description=f"[cyan]Preprocessing {img_file.name}...", completed=1)
+                    progress.update(
+                        file_task,
+                        description=f"[cyan]Preprocessing {img_file.name}...",
+                        completed=1,
+                    )
                     logger.info("Preprocessing image...")
-                    
+
                     if not PREPROCESS_AVAILABLE:
-                        console.print("[bold yellow]Warning:[/bold yellow] opencv-python not installed, skipping preprocessing")
+                        console.print(
+                            "[bold yellow]Warning:[/bold yellow] opencv-python not installed, skipping preprocessing"
+                        )
                         processed = None
                     else:
                         processed = preprocessing_pipeline(str(img_file))
                         logger.info("Preprocessing complete")
-                    
-                    progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
+
+                    progress.update(
+                        file_task,
+                        description=f"[cyan]Running OCR on {img_file.name}...",
+                        completed=2,
+                    )
                     if processed is not None:
                         ocr_results = ocr_engine.read_text_from_array(processed)
                     else:
                         ocr_results = ocr_engine.read_text(str(img_file))
                 else:
-                    progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
+                    progress.update(
+                        file_task,
+                        description=f"[cyan]Running OCR on {img_file.name}...",
+                        completed=2,
+                    )
                     ocr_results = ocr_engine.read_text(str(img_file))
-                
+
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
-                progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
+                progress.update(
+                    file_task,
+                    description=f"[cyan]Extracting fields from {img_file.name}...",
+                    completed=3,
+                )
                 bill_data = extractor.extract(ocr_results)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
-                
+
                 progress.update(file_task, description=f"[cyan]Saved {img_file.name}", completed=5)
                 logger.info(f"Complete: {img_file.name}")
 
             except CorruptImageError as e:
                 console.print(f"[bold red]Corrupt image error for {img_file.name}:[/bold red] {e}")
                 logger.error(f"Corrupt image: {img_file.name} - {e}")
-                console.print(f"[dim]  Skipping this file and continuing with others...[/dim]")
+                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
                 results.append((img_file.name, _create_empty_bill()))
 
             except NoTextDetectedError as e:
                 console.print(f"[yellow]No text detected for {img_file.name}:[/yellow] {e}")
                 logger.warning(f"No text detected in {img_file.name}: {e}")
-                console.print(f"[dim]  Skipping this file and continuing with others...[/dim]")
+                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
                 results.append((img_file.name, _create_empty_bill()))
 
             except Exception as e:
@@ -145,7 +167,7 @@ def main(
                 logger.error(f"Failed to process {img_file.name}: {e}")
                 if debug:
                     raise
-                console.print(f"[dim]  Skipping this file and continuing with others...[/dim]")
+                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
                 results.append((img_file.name, _create_empty_bill()))
 
             progress.update(main_task, advance=1)
@@ -164,10 +186,7 @@ def main(
 def _collect_images(folder: Path) -> list[Path]:
     """Collect image files from a folder."""
     extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
-    return sorted(
-        f for f in folder.iterdir()
-        if f.is_file() and f.suffix.lower() in extensions
-    )
+    return sorted(f for f in folder.iterdir() if f.is_file() and f.suffix.lower() in extensions)
 
 
 def _create_empty_bill() -> ExtractedBill:
@@ -180,7 +199,7 @@ def _create_empty_bill() -> ExtractedBill:
         subtotal=None,
         tax=None,
         total=None,
-        currency="EUR"
+        currency="EUR",
     )
 
 
@@ -219,25 +238,25 @@ def _display_results(results: list[tuple[str, ExtractedBill]], verbose: bool):
 def _format_json_output(bill: ExtractedBill, filename: str) -> dict:
     """Format bill data into the required JSON output format."""
     output = {}
-    
+
     if bill.date:
         output["date"] = bill.date.isoformat()
     else:
         logger.warning(f"Missing date for {filename}")
         output["date"] = None
-    
+
     if bill.total is not None:
         output["amount"] = round(bill.total, 2)
     else:
         logger.warning(f"Missing amount for {filename}")
         output["amount"] = None
-    
+
     if bill.invoice_number:
         output["id"] = bill.invoice_number
     else:
         logger.warning(f"Missing invoice number (id) for {filename}")
         output["id"] = None
-    
+
     return output
 
 
@@ -254,7 +273,7 @@ def _print_batch_summary(results: list[tuple[str, ExtractedBill]], total: int):
     """Print batch processing summary with success/failure counts."""
     successful = sum(1 for _, bill in results if bill.vendor is not None or bill.total is not None)
     failed = total - successful
-    
+
     console.print()
     console.print("[bold]Batch Processing Summary[/bold]")
     console.print(f"  Total files processed: [cyan]{total}[/cyan]")

@@ -1,9 +1,9 @@
 """Image preprocessing utilities."""
 
+
 import cv2
 import numpy as np
 from PIL import Image
-from typing import Tuple, Optional
 
 
 def load_image(image_path: str) -> np.ndarray:
@@ -20,9 +20,7 @@ def load_image_pil(image_path: str) -> Image.Image:
 
 
 def resize_image(
-    image: np.ndarray,
-    max_size: Tuple[int, int] = (1200, 1600),
-    inter: int = cv2.INTER_AREA
+    image: np.ndarray, max_size: tuple[int, int] = (1200, 1600), inter: int = cv2.INTER_AREA
 ) -> np.ndarray:
     """Resize image while maintaining aspect ratio."""
     h, w = image.shape[:2]
@@ -53,8 +51,7 @@ def apply_threshold(image: np.ndarray, method: str = "adaptive") -> np.ndarray:
         _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     else:
         thresh = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY, 11, 2
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
         )
 
     return thresh
@@ -67,9 +64,7 @@ def denoise(image: np.ndarray) -> np.ndarray:
 
 def sharpen(image: np.ndarray) -> np.ndarray:
     """Sharpen image."""
-    kernel = np.array([[-1, -1, -1],
-                   [-1,  9, -1],
-                   [-1, -1, -1]])
+    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
     return cv2.filter2D(image, -1, kernel)
 
 
@@ -114,7 +109,7 @@ def preprocessing_pipeline(
     deskew: bool = True,
 ) -> np.ndarray:
     """Run full preprocessing pipeline.
-    
+
     Args:
         image_path: Path to input image
         resize: Resize image to reduce processing time
@@ -122,7 +117,7 @@ def preprocessing_pipeline(
         sharpen_flag: Apply sharpening filter
         enhance: Apply CLAHE contrast enhancement
         deskew: Correct document skew using OpenCV
-    
+
     Returns:
         Enhanced numpy array suitable for OCR
     """

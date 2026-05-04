@@ -1,8 +1,9 @@
 """Tests for image preprocessing module."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
-from unittest.mock import Mock, patch
 
 
 @pytest.fixture
@@ -24,6 +25,7 @@ class TestGrayscale:
     def test_grayscale_color(self, sample_image):
         """Convert color image to grayscale."""
         from bill_extract.preprocess import grayscale
+
         gray = grayscale(sample_image)
         assert len(gray.shape) == 2
         assert gray.dtype == np.uint8
@@ -31,6 +33,7 @@ class TestGrayscale:
     def test_grayscale_already_gray(self, grayscale_image):
         """Grayscale image remains unchanged."""
         from bill_extract.preprocess import grayscale
+
         gray = grayscale(grayscale_image)
         assert np.array_equal(gray, grayscale_image)
 
@@ -41,6 +44,7 @@ class TestEnhanceContrast:
     def test_enhance_contrast(self, sample_image):
         """Apply CLAHE enhancement."""
         from bill_extract.preprocess import enhance_contrast
+
         enhanced = enhance_contrast(sample_image)
         assert enhanced.shape == sample_image.shape
         assert enhanced.dtype == np.uint8
@@ -52,6 +56,7 @@ class TestDeskew:
     def test_correct_skew_no_rotation(self, grayscale_image):
         """Image with minimal skew stays same."""
         from bill_extract.preprocess import correct_skew
+
         result = correct_skew(grayscale_image)
         assert result.shape == grayscale_image.shape
 
@@ -62,6 +67,7 @@ class TestDenoise:
     def test_denoise_returns_array(self, grayscale_image):
         """Denoise returns numpy array."""
         from bill_extract.preprocess import denoise
+
         denoised = denoise(grayscale_image)
         assert isinstance(denoised, np.ndarray)
 
@@ -72,6 +78,7 @@ class TestSharpen:
     def test_sharpen_returns_array(self, grayscale_image):
         """Sharpen returns numpy array."""
         from bill_extract.preprocess import sharpen
+
         sharp = sharpen(grayscale_image)
         assert isinstance(sharp, np.ndarray)
 
@@ -96,7 +103,7 @@ class TestPreprocessingPipeline:
         mock_deskew.return_value = np.zeros((100, 100), dtype=np.uint8)
         mock_denoise.return_value = np.zeros((100, 100), dtype=np.uint8)
 
-        result = preprocessing_pipeline("test.jpg")
+        preprocessing_pipeline("test.jpg")
 
         mock_load.assert_called_once_with("test.jpg")
         mock_gray.assert_called_once()
