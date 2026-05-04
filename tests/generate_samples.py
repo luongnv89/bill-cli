@@ -2,8 +2,8 @@
 """Generate synthetic sample invoice images for testing."""
 
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
-import random
 
 SAMPLES_DIR = Path(__file__).parent / "samples"
 SAMPLES_DIR.mkdir(exist_ok=True)
@@ -39,7 +39,7 @@ def create_invoice_image(
         font_large = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 28)
         font_medium = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 20)
         font_small = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 16)
-    except:
+    except OSError:
         font_large = ImageFont.load_default()
         font_medium = ImageFont.load_default()
         font_small = ImageFont.load_default()

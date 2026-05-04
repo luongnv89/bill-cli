@@ -1,8 +1,9 @@
 """Logging configuration with rich."""
 
 import logging
-from rich.logging import RichHandler
+
 from rich.console import Console
+from rich.logging import RichHandler
 
 console = Console()
 
@@ -22,7 +23,7 @@ def setup_logging(level: str = "INFO", rich_handler: bool = True) -> logging.Log
     """
     logger = logging.getLogger("bill_extract")
     logger.setLevel(getattr(logging, level.upper()))
-    
+
     if rich_handler:
         handler = RichHandler(
             console=console,
@@ -34,12 +35,12 @@ def setup_logging(level: str = "INFO", rich_handler: bool = True) -> logging.Log
         handler = logging.StreamHandler()
         formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
         handler.setFormatter(formatter)
-    
+
     if not logger.handlers:
         logger.addHandler(handler)
-    
+
     logger.propagate = False
-    
+
     return logger
 
 

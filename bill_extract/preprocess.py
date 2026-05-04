@@ -1,9 +1,10 @@
 """Image preprocessing utilities."""
 
+from typing import Tuple
+
 import cv2
 import numpy as np
 from PIL import Image
-from typing import Tuple, Optional
 
 
 def load_image(image_path: str) -> np.ndarray:
@@ -98,10 +99,10 @@ def correct_skew(image: np.ndarray) -> np.ndarray:
 def enhance_contrast(image: np.ndarray) -> np.ndarray:
     """Enhance image contrast."""
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
+    lightness, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l = clahe.apply(l)
-    enhanced = cv2.merge([l, a, b])
+    lightness = clahe.apply(lightness)
+    enhanced = cv2.merge([lightness, a, b])
     return cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
 
 

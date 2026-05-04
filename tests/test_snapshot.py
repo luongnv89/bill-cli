@@ -2,10 +2,10 @@
 
 import json
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
 import pytest
 from typer.testing import CliRunner
-
 
 SAMPLES_DIR = Path(__file__).parent / "samples"
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
@@ -61,8 +61,7 @@ class TestSampleInvoiceExtraction:
     @pytest.mark.parametrize("sample_image", sorted(SAMPLES_DIR.glob("facture*.png")))
     def test_extract_sample_invoice_json_output(self, sample_image, runner, snapshot_dir):
         """Test extracting a sample invoice produces consistent JSON output."""
-        from bill_extract.main import app, _format_json_output
-        from bill_extract.extractor import ExtractedBill
+        from bill_extract.main import app
 
         with patch("bill_extract.main.console") as mock_console:
             mock_console.print_json = Mock()
@@ -88,7 +87,7 @@ class TestSampleInvoiceExtraction:
 
             expected = read_snapshot("facture1")
             if expected:
-                assert data == expected, f"Snapshot mismatch for facture1"
+                assert data == expected, "Snapshot mismatch for facture1"
         else:
             pytest.skip("Could not extract data from sample image")
 
