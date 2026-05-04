@@ -193,21 +193,44 @@ def _display_results(results: list[tuple[str, ExtractedBill]], verbose: bool):
                 console.print(f"  Subtotal: {bill.subtotal:.2f}")
 
 
+def _format_json_output(bill: ExtractedBill, filename: str) -> dict:
+    """Format bill data into the required JSON output format."""
+    output = {}
+    
+    if bill.date:
+        output["date"] = bill.date.isoformat()
+    else:
+        logger.warning(f"Missing date for {filename}")
+        output["date"] = None
+    
+    if bill.total is not None:
+        output["amount"] = round(bill.total, 2)
+    else:
+        logger.warning(f"Missing amount for {filename}")
+        output["amount"] = None
+    
+    if bill.invoice_number:
+        output["id"] = bill.invoice_number
+    else:
+        logger.warning(f"Missing invoice number (id) for {filename}")
+        output["id"] = None
+    
+    return output
+
+
 def _save_results(results: list[tuple[str, ExtractedBill]], output_dir: Path):
     """Save results to output directory."""
     for filename, bill in results:
         output_file = output_dir / f"{Path(filename).stem}.json"
+        output = _format_json_output(bill, filename)
         with open(output_file, "w") as f:
-            json.dump(bill.model_dump(mode="json"), f, indent=2, default=str)
+            json.dump(output, f, indent=2)
 
 
 def _print_json_output(results: list[tuple[str, ExtractedBill]]):
     """Print results as JSON to stdout."""
-    output = [
-        {"file": filename, "data": bill.model_dump(mode="json")}
-        for filename, bill in results
-    ]
-    console.print_json(json.dumps(output, indent=2, default=str))
+    output = [_format_json_output(bill, filename) for filename, bill in results]
+    console.print_json(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":
