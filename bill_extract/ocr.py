@@ -1,7 +1,6 @@
 """OCR functionality using PaddleOCR."""
 
 import time
-from pathlib import Path
 
 try:
     from paddleocr import PaddleOCR
@@ -14,21 +13,6 @@ from bill_extract.logging import get_logger
 logger = get_logger("bill_extract.ocr")
 
 FIRST_LOAD = True
-
-
-class OCRError(Exception):
-    """Base exception for OCR errors."""
-    pass
-
-
-class CorruptImageError(OCRError):
-    """Raised when image file is corrupt or unreadable."""
-    pass
-
-
-class NoTextDetectedError(OCRError):
-    """Raised when OCR detects no text in the image."""
-    pass
 
 
 class BillOCR:
@@ -64,33 +48,6 @@ class BillOCR:
 
         return self._ocr
 
-    def _validate_image(self, image_path: str) -> None:
-        """Validate image file is readable and not corrupt.
-
-        Args:
-            image_path: Path to the image file.
-
-        Raises:
-            CorruptImageError: If image is corrupt or unreadable.
-            FileNotFoundError: If image file does not exist.
-        """
-        path = Path(image_path)
-        if not path.exists():
-            raise FileNotFoundError(f"Image file not found: {image_path}")
-
-        if path.stat().st_size == 0:
-            raise CorruptImageError(f"Image file is empty: {image_path}")
-
-        try:
-            from PIL import Image
-            with Image.open(image_path) as img:
-                img.verify()
-        except Exception as e:
-            raise CorruptImageError(
-                f"Image file appears corrupt or invalid: {image_path}. "
-                f"Error: {str(e)}. Try a different image or check if it's a valid image format."
-            )
-
     def extract_text(self, image_path: str) -> list[tuple[list, tuple[str, float]]]:
         """Extract text from an image file.
 
@@ -99,41 +56,12 @@ class BillOCR:
 
         Returns:
             List of (bbox, (text, confidence)) tuples.
-
-        Raises:
-            CorruptImageError: If image file is corrupt or unreadable.
-            NoTextDetectedError: If no text is detected in the image.
         """
-        self._validate_image(image_path)
-
         ocr = self._get_ocr()
-        try:
-            result = ocr.ocr(image_path, cls=True)
-        except Exception as e:
-            logger.error(f"OCR processing failed for {image_path}: {e}")
-            raise CorruptImageError(
-                f"Failed to process image: {image_path}. "
-                f"The image may be corrupted or in an unsupported format. Error: {str(e)}"
-            )
-
+        result = ocr.ocr(image_path, cls=True)
         if not result or not result[0]:
-            logger.warning(f"OCR returned no text for {image_path}. Try preprocessing or use a better quality image.")
-            raise NoTextDetectedError(
-                f"OCR returned no text for {image_path}. "
-                f"Try preprocessing or use a better quality screenshot."
-            )
-
-        ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
-        confidences = [item[1][1] for item in ocr_results]
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
-
-        if avg_confidence < 0.6:
-            logger.warning(
-                f"Low confidence OCR result for {image_path}: average confidence {avg_confidence:.2f}. "
-                f"Consider using a clearer image or enabling preprocessing."
-            )
-
-        return ocr_results
+            return []
+        return [(line[0], (line[1][0], line[1][1])) for line in result[0]]
 
     def extract_text_from_array(
         self, image_array
@@ -145,38 +73,12 @@ class BillOCR:
 
         Returns:
             List of (bbox, (text, confidence)) tuples.
-
-        Raises:
-            NoTextDetectedError: If no text is detected in the image.
         """
         ocr = self._get_ocr()
-        try:
-            result = ocr.ocr(image_array, cls=True)
-        except Exception as e:
-            logger.error(f"OCR processing failed for array input: {e}")
-            raise CorruptImageError(
-                f"Failed to process image array: {str(e)}. "
-                f"The image data may be corrupted."
-            )
-
+        result = ocr.ocr(image_array, cls=True)
         if not result or not result[0]:
-            logger.warning("OCR returned no text from preprocessed image. Try a better quality original image.")
-            raise NoTextDetectedError(
-                "OCR returned no text from preprocessed image. "
-                "Try a better quality original image or adjust preprocessing."
-            )
-
-        ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
-        confidences = [item[1][1] for item in ocr_results]
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
-
-        if avg_confidence < 0.6:
-            logger.warning(
-                f"Low confidence OCR result from preprocessed image: {avg_confidence:.2f}. "
-                f"Consider using a clearer original image."
-            )
-
-        return ocr_results
+            return []
+        return [(line[0], (line[1][0], line[1][1])) for line in result[0]]
 
 
 OCREngine = BillOCR

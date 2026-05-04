@@ -19,12 +19,29 @@ except ImportError:
     preprocessing_pipeline = None
 
 from bill_extract.extractor import BillExtractor, ExtractedBill
-from bill_extract.ocr import CorruptImageError, NoTextDetectedError, OCREngine
+from bill_extract.ocr import OCREngine
 
 app = typer.Typer(name="bill-extract")
 console = Console()
 
 logger = get_logger("bill_extract")
+
+
+def _convert_ocr_results(ocr_results: list) -> list[dict]:
+    """Convert OCR results from tuple format to dict format for extractor."""
+    converted = []
+    for result in ocr_results:
+        if isinstance(result, tuple) and len(result) == 2:
+            bbox, (text, confidence) = result
+            y_center = 0.0
+            if bbox and len(bbox) >= 4:
+                y_coords = [point[1] for point in bbox[:4]]
+                y_center = sum(y_coords) / len(y_coords)
+            converted.append({"text": text, "confidence": confidence, "bbox": bbox, "y_center": y_center})
+        else:
+            converted.append({"text": str(result), "confidence": 0.8, "bbox": [], "y_center": 0.0})
+    return converted
+
 
 InputArg = Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")]
 OutputArg = Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory (default: stdout)")]
@@ -115,42 +132,29 @@ def main(
 
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
                     if processed is not None:
-                        ocr_results = ocr_engine.read_text_from_array(processed)
+                        ocr_results = ocr_engine.extract_text_from_array(processed)
                     else:
-                        ocr_results = ocr_engine.read_text(str(img_file))
+                        ocr_results = ocr_engine.extract_text(str(img_file))
                 else:
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
-                    ocr_results = ocr_engine.read_text(str(img_file))
+                    ocr_results = ocr_engine.extract_text(str(img_file))
 
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
                 progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
-                bill_data = extractor.extract(ocr_results)
+                ocr_dicts = _convert_ocr_results(ocr_results)
+                bill_data = extractor.extract(ocr_dicts)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
 
                 progress.update(file_task, description=f"[cyan]Saved {img_file.name}", completed=5)
                 logger.info(f"Complete: {img_file.name}")
 
-            except CorruptImageError as e:
-                console.print(f"[bold red]Corrupt image error for {img_file.name}:[/bold red] {e}")
-                logger.error(f"Corrupt image: {img_file.name} - {e}")
-                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
-
-            except NoTextDetectedError as e:
-                console.print(f"[yellow]No text detected for {img_file.name}:[/yellow] {e}")
-                logger.warning(f"No text detected in {img_file.name}: {e}")
-                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
-
             except Exception as e:
                 console.print(f"[bold red]Error processing {img_file.name}:[/bold red] {e}")
                 logger.error(f"Failed to process {img_file.name}: {e}")
                 if debug:
                     raise
-                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
 
             progress.update(main_task, advance=1)
 
@@ -169,20 +173,6 @@ def _collect_images(folder: Path) -> list[Path]:
     return sorted(
         f for f in folder.iterdir()
         if f.is_file() and f.suffix.lower() in extensions
-    )
-
-
-def _create_empty_bill() -> ExtractedBill:
-    """Create an empty bill with null values for graceful degradation."""
-    return ExtractedBill(
-        vendor=None,
-        date=None,
-        invoice_number=None,
-        items=[],
-        subtotal=None,
-        tax=None,
-        total=None,
-        currency="EUR"
     )
 
 
