@@ -5,11 +5,14 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
+from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
 from bill_extract.logging import setup_logging
 from bill_extract.ocr import CorruptImageError, NoTextDetectedError, OCREngine
+
+console = Console()
 
 try:
     from bill_extract.preprocess import preprocessing_pipeline
@@ -145,7 +148,7 @@ def main(
                 )
                 bill_data = extractor.extract(ocr_results)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
-                results.append((img_file.name, bill_data))
+                results.append((img_file.name, bill_data, False))
 
                 progress.update(file_task, description=f"[cyan]Saved {img_file.name}", completed=5)
                 logger.info(f"Complete: {img_file.name}")
@@ -154,13 +157,13 @@ def main(
                 console.print(f"[bold red]Corrupt image error for {img_file.name}:[/bold red] {e}")
                 logger.error(f"Corrupt image: {img_file.name} - {e}")
                 console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
+                results.append((img_file.name, _create_empty_bill(), True))
 
             except NoTextDetectedError as e:
                 console.print(f"[yellow]No text detected for {img_file.name}:[/yellow] {e}")
                 logger.warning(f"No text detected in {img_file.name}: {e}")
                 console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
+                results.append((img_file.name, _create_empty_bill(), True))
 
             except Exception as e:
                 console.print(f"[bold red]Error processing {img_file.name}:[/bold red] {e}")
@@ -168,7 +171,7 @@ def main(
                 if debug:
                     raise
                 console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
+                results.append((img_file.name, _create_empty_bill(), True))
 
             progress.update(main_task, advance=1)
 
@@ -260,19 +263,19 @@ def _format_json_output(bill: ExtractedBill, filename: str) -> dict:
     return output
 
 
-def _save_results(results: list[tuple[str, ExtractedBill]], output_dir: Path):
+def _save_results(results: list[tuple[str, ExtractedBill, bool]], output_dir: Path):
     """Save results to output directory."""
-    for filename, bill in results:
+    for filename, bill, _ in results:
         output_file = output_dir / f"{Path(filename).stem}.json"
         output = _format_json_output(bill, filename)
         with open(output_file, "w") as f:
             json.dump(output, f, indent=2)
 
 
-def _print_batch_summary(results: list[tuple[str, ExtractedBill]], total: int):
+def _print_batch_summary(results: list[tuple[str, ExtractedBill, bool]], total: int):
     """Print batch processing summary with success/failure counts."""
-    successful = sum(1 for _, bill in results if bill.vendor is not None or bill.total is not None)
-    failed = total - successful
+    failed = sum(1 for _, _, error in results if error)
+    successful = total - failed
 
     console.print()
     console.print("[bold]Batch Processing Summary[/bold]")
@@ -284,9 +287,9 @@ def _print_batch_summary(results: list[tuple[str, ExtractedBill]], total: int):
         console.print(f"  Failed: [green]{failed}[/green]")
 
 
-def _print_json_output(results: list[tuple[str, ExtractedBill]]):
+def _print_json_output(results: list[tuple[str, ExtractedBill, bool]]):
     """Print results as JSON to stdout."""
-    output = [_format_json_output(bill, filename) for filename, bill in results]
+    output = [_format_json_output(bill, filename) for filename, bill, _ in results]
     console.print_json(json.dumps(output, indent=2))
 
 

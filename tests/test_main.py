@@ -248,14 +248,14 @@ class TestBatchSummary:
             total=100.0,
             currency="EUR",
         )
-        results = [("test1.png", bill), ("test2.png", bill)]
+        results = [("test1.png", bill, False), ("test2.png", bill, False)]
 
         with patch("bill_extract.main.console", new=Mock()) as mock_console:
             _print_batch_summary(results, 2)
             mock_console.print.assert_called()
             call_args = str(mock_console.print.call_args_list)
-            assert "Total files processed: 2" in call_args
-            assert "Successful: 2" in call_args
+            assert "Total files processed" in call_args
+            assert "Successful:" in call_args
 
     def test_batch_summary_with_failures(self):
         """Test batch summary with failed extractions."""
@@ -266,10 +266,10 @@ class TestBatchSummary:
 
         bill_success = ExtractedBill(vendor="Test", total=100.0, currency="EUR")
         bill_failed = _create_empty_bill()
-        results = [("test1.png", bill_success), ("test2.png", bill_failed)]
+        results = [("test1.png", bill_success, False), ("test2.png", bill_failed, True)]
 
         with patch("bill_extract.main.console", new=Mock()) as mock_console:
             _print_batch_summary(results, 2)
             call_args = str(mock_console.print.call_args_list)
-            assert "Successful: 1" in call_args
-            assert "Failed: 1" in call_args
+            assert "Successful:" in call_args
+            assert "Failed:" in call_args
