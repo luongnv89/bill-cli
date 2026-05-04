@@ -92,6 +92,7 @@ class FieldExtractor:
             ocr_results, key=lambda r: r.get("y_center", 0)
         )
 
+        candidates = []
         for result in sorted_results:
             text = result.get("text", "")
             confidence = result.get("confidence", 0.8)
@@ -102,16 +103,37 @@ class FieldExtractor:
                     date_str = match.group(1) or match.group(0)
                     parsed = self._parse_date(date_str)
                     if parsed:
-                        return FieldExtractionResult(
-                            value=parsed.isoformat(),
-                            confidence=min(confidence + 0.1, 1.0),
-                            matched_text=text.strip()
-                        )
+                        candidates.append((parsed, confidence, text))
+
+        if candidates:
+            if len(candidates) > 1:
+                all_candidates = [f"{c[0]} (confidence: {c[1]:.2f})" for c in candidates]
+                logger.info(
+                    f"Multiple date candidates found: {all_candidates}. "
+                    f"Selecting: {candidates[0][0]}"
+                )
+
+            best = candidates[0]
+            if best[1] < 0.6:
+                logger.warning(
+                    f"Low confidence date extraction: {best[0]} (confidence: {best[1]:.2f})"
+                )
+            return FieldExtractionResult(
+                value=best[0].isoformat(),
+                confidence=min(best[1] + 0.1, 1.0),
+                matched_text=best[2].strip()
+            )
 
         fallback_result = self._fallback_date(sorted_results)
         if fallback_result:
+            if fallback_result.confidence < 0.6:
+                logger.warning(
+                    f"Low confidence fallback date extraction: {fallback_result.value} "
+                    f"(confidence: {fallback_result.confidence:.2f})"
+                )
             return fallback_result
 
+        logger.warning("No date found in OCR results")
         return FieldExtractionResult(value=None, confidence=0.0, matched_text="")
 
     def extract_amount_ttc(
@@ -123,6 +145,7 @@ class FieldExtractor:
         )
         text_lines = [(r.get("text", ""), r.get("confidence", 0.8)) for r in sorted_results]
 
+        candidates = []
         for text, conf in text_lines:
             for pattern in self.FRENCH_AMOUNT_PATTERNS:
                 match = re.search(pattern, text, re.IGNORECASE)
@@ -130,16 +153,37 @@ class FieldExtractor:
                     amount_str = match.group(1)
                     amount = self._parse_amount(amount_str)
                     if amount is not None:
-                        return FieldExtractionResult(
-                            value=amount,
-                            confidence=min(conf + 0.1, 1.0),
-                            matched_text=text.strip()
-                        )
+                        candidates.append((amount, conf, text))
+
+        if candidates:
+            if len(candidates) > 1:
+                all_candidates = [f"{c[0]:.2f} (confidence: {c[1]:.2f})" for c in candidates]
+                logger.info(
+                    f"Multiple amount candidates found: {all_candidates}. "
+                    f"Selecting: {candidates[0][0]:.2f}"
+                )
+
+            best = candidates[0]
+            if best[1] < 0.6:
+                logger.warning(
+                    f"Low confidence amount extraction: {best[0]:.2f} (confidence: {best[1]:.2f})"
+                )
+            return FieldExtractionResult(
+                value=best[0],
+                confidence=min(best[1] + 0.1, 1.0),
+                matched_text=best[2].strip()
+            )
 
         fallback_result = self._fallback_amount(text_lines)
         if fallback_result:
+            if fallback_result.confidence < 0.6:
+                logger.warning(
+                    f"Low confidence fallback amount extraction: {fallback_result.value} "
+                    f"(confidence: {fallback_result.confidence:.2f})"
+                )
             return fallback_result
 
+        logger.warning("No TTC amount found in OCR results")
         return FieldExtractionResult(value=None, confidence=0.0, matched_text="")
 
     def extract_bill_id(
@@ -162,7 +206,18 @@ class FieldExtractor:
                     candidates.append((bill_id, confidence, text))
 
         if candidates:
+            if len(candidates) > 1:
+                all_candidates = [f"{c[0]} (confidence: {c[1]:.2f})" for c in candidates]
+                logger.info(
+                    f"Multiple bill ID candidates found: {all_candidates}. "
+                    f"Selecting: {candidates[0][0]}"
+                )
+
             best = max(candidates, key=lambda x: x[1])
+            if best[1] < 0.6:
+                logger.warning(
+                    f"Low confidence bill ID extraction: {best[0]} (confidence: {best[1]:.2f})"
+                )
             return FieldExtractionResult(
                 value=best[0],
                 confidence=min(best[1] + 0.1, 1.0),
@@ -171,8 +226,14 @@ class FieldExtractor:
 
         fallback_result = self._fallback_bill_id(sorted_results)
         if fallback_result:
+            if fallback_result.confidence < 0.6:
+                logger.warning(
+                    f"Low confidence fallback bill ID extraction: {fallback_result.value} "
+                    f"(confidence: {fallback_result.confidence:.2f})"
+                )
             return fallback_result
 
+        logger.warning("No bill ID found in OCR results")
         return FieldExtractionResult(value=None, confidence=0.0, matched_text="")
 
     def _parse_date(self, date_str: str) -> Optional[date_type]:
