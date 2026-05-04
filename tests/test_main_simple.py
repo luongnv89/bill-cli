@@ -3,8 +3,6 @@
 import sys
 from pathlib import Path
 
-pytest_plugins = []
-
 
 def test_cli_help(capsys):
     """Test --help output."""
@@ -35,6 +33,7 @@ def test_cli_requires_input():
     runner = CliRunner()
     result = runner.invoke(app, [])
     assert result.exit_code == 0
+    assert "Usage" in result.stdout or "usage" in result.stdout
 
 
 def test_collect_images():

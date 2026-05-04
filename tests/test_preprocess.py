@@ -1,9 +1,11 @@
 """Tests for image preprocessing module."""
 
-from unittest.mock import patch
-
-import numpy as np
 import pytest
+
+cv2 = pytest.importorskip("cv2")
+np = pytest.importorskip("numpy")
+
+from unittest.mock import patch
 
 
 @pytest.fixture
@@ -97,7 +99,7 @@ class TestPreprocessingPipeline:
         mock_deskew.return_value = np.zeros((100, 100), dtype=np.uint8)
         mock_denoise.return_value = np.zeros((100, 100), dtype=np.uint8)
 
-        result = preprocessing_pipeline("test.jpg")
+        _result = preprocessing_pipeline("test.jpg")
 
         mock_load.assert_called_once_with("test.jpg")
         mock_gray.assert_called_once()

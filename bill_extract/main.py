@@ -2,13 +2,13 @@
 
 import json
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
-from bill_extract.logging import setup_logging
+from bill_extract.logging import console, get_logger, setup_logging
 from bill_extract.ocr import CorruptImageError, NoTextDetectedError, OCREngine
 
 try:
@@ -16,14 +16,31 @@ try:
     PREPROCESS_AVAILABLE = True
 except ImportError:
     PREPROCESS_AVAILABLE = False
-    preprocessing_pipeline = None
+    preprocessing_pipeline = None  # type: ignore[assignment]
 
 from bill_extract.extractor import BillExtractor, ExtractedBill
 
 app = typer.Typer(name="bill-extract", add_completion=False, no_args_is_help=True)
 
+logger = get_logger("bill_extract.main")
 
-@app.callback()
+
+def _convert_ocr_output(ocr_results: list[tuple[list, tuple[str, float]]]) -> list[dict[str, Any]]:
+    """Convert OCR output format to extractor input format."""
+    converted = []
+    for bbox, (text, confidence) in ocr_results:
+        # Calculate y_center from bounding box
+        y_coords = [point[1] for point in bbox]
+        y_center = sum(y_coords) / len(y_coords) if y_coords else 0
+        converted.append({
+            "text": text,
+            "confidence": confidence,
+            "y_center": y_center,
+        })
+    return converted
+
+
+@app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
     input: Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")] = None,
@@ -106,17 +123,18 @@ def main(
 
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
                     if processed is not None:
-                        ocr_results = ocr_engine.read_text_from_array(processed)
+                        ocr_results = ocr_engine.extract_text_from_array(processed)
                     else:
-                        ocr_results = ocr_engine.read_text(str(img_file))
+                        ocr_results = ocr_engine.extract_text(str(img_file))
                 else:
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
-                    ocr_results = ocr_engine.read_text(str(img_file))
+                    ocr_results = ocr_engine.extract_text(str(img_file))
 
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
                 progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
-                bill_data = extractor.extract(ocr_results)
+                converted_results = _convert_ocr_output(ocr_results)
+                bill_data = extractor.extract(converted_results)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
 
@@ -209,9 +227,9 @@ def _display_results(results: list[tuple[str, ExtractedBill]], verbose: bool):
                 console.print(f"  Subtotal: {bill.subtotal:.2f}")
 
 
-def _format_json_output(bill: ExtractedBill, filename: str) -> dict:
+def _format_json_output(bill: ExtractedBill, filename: str) -> dict[str, Any]:
     """Format bill data into the required JSON output format."""
-    output = {}
+    output: dict[str, Any] = {}
 
     if bill.date:
         output["date"] = bill.date.isoformat()

@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import date, datetime
 from datetime import date as date_type
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -33,7 +33,7 @@ class ExtractedBill(BaseModel):
 
 class FieldExtractionResult(BaseModel):
     """Result of field extraction with confidence scoring."""
-    value: Optional[str | float] = None
+    value: Optional[Union[str, float]] = None
     confidence: float = 0.0
     matched_text: str = ""
 
@@ -248,8 +248,8 @@ class FieldExtractor:
                 continue
 
         try:
-            from dateutil import parser
-            return parser.parse(date_str, dayfirst=True).date()
+            from dateutil import parser  # type: ignore[import-untyped]
+            return parser.parse(date_str, dayfirst=True).date()  # type: ignore[no-any-return]
         except ImportError:
             pass
 
@@ -346,7 +346,7 @@ class FieldExtractor:
             "date": self.extract_date(ocr_results),
             "amount_ttc": self.extract_amount_ttc(ocr_results),
             "bill_id": self.extract_bill_id(ocr_results),
-        }
+        }  # type: ignore[return-value]
 
 
 class BillExtractor:
@@ -383,7 +383,7 @@ class BillExtractor:
         self, ocr_results: list[dict[str, Any]]
     ) -> dict[str, FieldExtractionResult]:
         """Extract fields with French patterns and confidence scoring."""
-        return self.field_extractor.extract_all(ocr_results)
+        return self.field_extractor.extract_all(ocr_results)  # type: ignore[no-any-return]
 
     def _is_vendor(self, text: str) -> bool:
         """Check if text looks like a vendor name."""

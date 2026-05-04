@@ -1,5 +1,4 @@
-paddleocr>=2.7.0
-paddlepaddle>=2.5.0
+# Core dependencies (OCR deps are optional, install with: pip install -e ".[ocr]")
 rich>=13.0.0
 tqdm>=4.65.0
 pillow>=10.0.0
