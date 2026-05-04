@@ -23,6 +23,7 @@ except ImportError:
 
 from bill_extract.extractor import BillExtractor, ExtractedBill
 from bill_extract.ocr import OCREngine, FIRST_LOAD as OCR_FIRST_LOAD
+from bill_extract.config import load_patterns
 
 app = typer.Typer(name="bill-extract")
 console = Console()
@@ -35,6 +36,7 @@ LangArg = Annotated[str, typer.Option("--lang", "-l", help="OCR language")]
 PreprocessArg = Annotated[bool, typer.Option("--preprocess", "-p", help="Enable image preprocessing")]
 VerboseArg = Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")]
 DebugArg = Annotated[bool, typer.Option("--debug", "-d", help="Enable debug output")]
+PatternsArg = Annotated[Optional[str], typer.Option("--patterns", help="Path to custom patterns YAML file")]
 
 
 @app.command()
@@ -45,6 +47,7 @@ def main(
     preprocess: PreprocessArg = False,
     verbose: VerboseArg = False,
     debug: DebugArg = False,
+    patterns: PatternsArg = None,
 ):
     """Extract information from bills and invoices."""
     log_level = "DEBUG" if debug else "INFO"
@@ -86,7 +89,16 @@ def main(
         console.print(f"[bold red]Error:[/bold red] {e}")
         raise typer.Exit(code=1)
 
-    extractor = BillExtractor()
+    pattern_config = None
+    if patterns:
+        pattern_config = load_patterns(patterns)
+        if verbose:
+            console.print(f"[dim]Using custom patterns from: {patterns}[/dim]")
+    else:
+        if verbose:
+            console.print("[dim]Using default patterns[/dim]")
+
+    extractor = BillExtractor(pattern_config)
     results: list[tuple[str, ExtractedBill]] = []
 
     with Progress(
