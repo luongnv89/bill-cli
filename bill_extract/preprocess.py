@@ -1,5 +1,7 @@
 """Image preprocessing utilities."""
 
+from typing import Tuple
+
 import cv2
 import numpy as np
 from PIL import Image
@@ -20,7 +22,7 @@ def load_image_pil(image_path: str) -> Image.Image:
 
 def resize_image(
     image: np.ndarray,
-    max_size: tuple[int, int] = (1200, 1600),
+    max_size: Tuple[int, int] = (1200, 1600),
     inter: int = cv2.INTER_AREA
 ) -> np.ndarray:
     """Resize image while maintaining aspect ratio."""
@@ -97,10 +99,10 @@ def correct_skew(image: np.ndarray) -> np.ndarray:
 def enhance_contrast(image: np.ndarray) -> np.ndarray:
     """Enhance image contrast."""
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    lightness, a, b = cv2.split(lab)
+    l, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    lightness = clahe.apply(lightness)
-    enhanced = cv2.merge([lightness, a, b])
+    l = clahe.apply(l)
+    enhanced = cv2.merge([l, a, b])
     return cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
 
 
@@ -113,7 +115,7 @@ def preprocessing_pipeline(
     deskew: bool = True,
 ) -> np.ndarray:
     """Run full preprocessing pipeline.
-
+    
     Args:
         image_path: Path to input image
         resize: Resize image to reduce processing time
@@ -121,7 +123,7 @@ def preprocessing_pipeline(
         sharpen_flag: Apply sharpening filter
         enhance: Apply CLAHE contrast enhancement
         deskew: Correct document skew using OpenCV
-
+    
     Returns:
         Enhanced numpy array suitable for OCR
     """

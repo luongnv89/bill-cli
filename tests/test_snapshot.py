@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 from unittest.mock import Mock, patch
 
 import pytest
@@ -31,12 +30,12 @@ def sample_images():
     return sorted(SAMPLES_DIR.glob("facture*.png"))
 
 
-def read_snapshot(name: str) -> Optional[dict]:
+def read_snapshot(name: str) -> dict | None:
     """Read a snapshot file."""
     snapshot_file = SNAPSHOT_DIR / f"{name}.json"
     if snapshot_file.exists():
         with open(snapshot_file) as f:
-            return json.load(f)  # type: ignore[no-any-return]
+            return json.load(f)
     return None
 
 

@@ -1,0 +1,45 @@
+# Default regex patterns for bill extraction
+# These patterns are used as fallback when custom patterns are not provided
+
+patterns:
+  date:
+    - name: common_date
+      pattern: "(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})"
+      keywords: ["date", "daté", "facturé"]
+      confidence: 0.8
+    - name: iso_date
+      pattern: "(\\d{4}[/\\-]\\d{1,2}[/\\-]\\d{1,2})"
+      keywords: ["date", "daté"]
+      confidence: 0.9
+    - name: french_date
+      pattern: "(\\d{1,2}\\s+(?:jan|fév|mar|avr|mai|juin|juil|aoû|sep|oct|nov|déc)[a-z]*\\s+\\d{2,4})"
+      keywords: ["date", "daté", "facturé"]
+      confidence: 0.7
+
+  amount:
+    - name: total_ttc
+      pattern: "(?:total\\s+(?:ttc|à\\s+payer)|montant\\s+(?:total|à\\s+payer)|balance)\\s*[.:]?\\s*([\\d.,]+)\\s*[€$]?"
+      keywords: ["total ttc", "montant total", "à payer", "balance"]
+      confidence: 0.9
+    - name: amount_with_currency
+      pattern: "([\\d.,]+)\\s*[€$£]"
+      keywords: ["€", "$", "£"]
+      confidence: 0.7
+    - name: simple_amount
+      pattern: "([\\d,]+\\.?\\d*)"
+      keywords: ["amount", "montant", "total"]
+      confidence: 0.5
+
+  id:
+    - name: invoice_number
+      pattern: "(?:n°|numéro|numero|number|ref|référence)\\s*(?:de\\s+)?(?:facture|invoice|bill)?\\s*[.:]?\\s*([A-Z0-9-]+)"
+      keywords: ["n°", "numéro", "facture", "invoice", "reference"]
+      confidence: 0.9
+    - name: invoice_id_simple
+      pattern: "(?:facture|invoice|bill)\\s*[.#]?\\s*([A-Z0-9-]+)"
+      keywords: ["facture", "invoice", "bill"]
+      confidence: 0.7
+    - name: ref_pattern
+      pattern: "([A-Z]{2,5}[-/]?\\d+)"
+      keywords: ["ref"]
+      confidence: 0.6

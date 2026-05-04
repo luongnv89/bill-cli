@@ -2,53 +2,63 @@
 
 import json
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 import typer
+from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
-from bill_extract.logging import console, get_logger, setup_logging
-from bill_extract.ocr import CorruptImageError, NoTextDetectedError, OCREngine
+from bill_extract.logging import get_logger, setup_logging
 
 try:
     from bill_extract.preprocess import preprocessing_pipeline
     PREPROCESS_AVAILABLE = True
 except ImportError:
     PREPROCESS_AVAILABLE = False
-    preprocessing_pipeline = None  # type: ignore[assignment]
+    preprocessing_pipeline = None
 
 from bill_extract.extractor import BillExtractor, ExtractedBill
+from bill_extract.ocr import OCREngine
 
-app = typer.Typer(name="bill-extract", add_completion=False, no_args_is_help=True)
+app = typer.Typer(name="bill-extract")
+console = Console()
 
-logger = get_logger("bill_extract.main")
+logger = get_logger("bill_extract")
 
 
-def _convert_ocr_output(ocr_results: list[tuple[list, tuple[str, float]]]) -> list[dict[str, Any]]:
-    """Convert OCR output format to extractor input format."""
+def _convert_ocr_results(ocr_results: list) -> list[dict]:
+    """Convert OCR results from tuple format to dict format for extractor."""
     converted = []
-    for bbox, (text, confidence) in ocr_results:
-        # Calculate y_center from bounding box
-        y_coords = [point[1] for point in bbox]
-        y_center = sum(y_coords) / len(y_coords) if y_coords else 0
-        converted.append({
-            "text": text,
-            "confidence": confidence,
-            "y_center": y_center,
-        })
+    for result in ocr_results:
+        if isinstance(result, tuple) and len(result) == 2:
+            bbox, (text, confidence) = result
+            y_center = 0.0
+            if bbox and len(bbox) >= 4:
+                y_coords = [point[1] for point in bbox[:4]]
+                y_center = sum(y_coords) / len(y_coords)
+            converted.append({"text": text, "confidence": confidence, "bbox": bbox, "y_center": y_center})
+        else:
+            converted.append({"text": str(result), "confidence": 0.8, "bbox": [], "y_center": 0.0})
     return converted
 
 
-@app.callback(invoke_without_command=True)
+InputArg = Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")]
+OutputArg = Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory (default: stdout)")]
+LangArg = Annotated[str, typer.Option("--lang", "-l", help="OCR language")]
+PreprocessArg = Annotated[bool, typer.Option("--preprocess", "-p", help="Enable image preprocessing")]
+VerboseArg = Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")]
+DebugArg = Annotated[bool, typer.Option("--debug", "-d", help="Enable debug output")]
+
+
+@app.command()
 def main(
-    ctx: typer.Context,
-    input: Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")] = None,
-    output: Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory")] = None,
-    lang: Annotated[str, typer.Option("--lang", "-l", help="OCR language")] = "fr",
-    preprocess: Annotated[bool, typer.Option("--preprocess", "-p", help="Enable preprocessing")] = False,
-    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Verbose output")] = False,
-    debug: Annotated[bool, typer.Option("--debug", "-d", help="Debug output")] = False,
+    input: InputArg = None,
+    output: OutputArg = None,
+    lang: LangArg = "fr",
+    preprocess: PreprocessArg = False,
+    verbose: VerboseArg = False,
+    debug: DebugArg = False,
 ):
     """Extract information from bills and invoices."""
     log_level = "DEBUG" if debug else "INFO"
@@ -56,7 +66,6 @@ def main(
 
     if not input:
         console.print("[bold red]Error:[/bold red] --input is required")
-        console.print("Use bill-extract --help for usage information")
         raise typer.Exit(code=1)
 
     input_path = Path(input)
@@ -89,7 +98,7 @@ def main(
         ocr_engine = OCREngine(lang=lang)
     except ImportError as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(code=1) from e
+        raise typer.Exit(code=1)
 
     extractor = BillExtractor()
     results: list[tuple[str, ExtractedBill]] = []
@@ -133,33 +142,19 @@ def main(
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
                 progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
-                converted_results = _convert_ocr_output(ocr_results)
-                bill_data = extractor.extract(converted_results)
+                ocr_dicts = _convert_ocr_results(ocr_results)
+                bill_data = extractor.extract(ocr_dicts)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
 
                 progress.update(file_task, description=f"[cyan]Saved {img_file.name}", completed=5)
                 logger.info(f"Complete: {img_file.name}")
 
-            except CorruptImageError as e:
-                console.print(f"[bold red]Corrupt image error for {img_file.name}:[/bold red] {e}")
-                logger.error(f"Corrupt image: {img_file.name} - {e}")
-                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
-
-            except NoTextDetectedError as e:
-                console.print(f"[yellow]No text detected for {img_file.name}:[/yellow] {e}")
-                logger.warning(f"No text detected in {img_file.name}: {e}")
-                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
-
             except Exception as e:
                 console.print(f"[bold red]Error processing {img_file.name}:[/bold red] {e}")
                 logger.error(f"Failed to process {img_file.name}: {e}")
                 if debug:
                     raise
-                console.print("[dim]  Skipping this file and continuing with others...[/dim]")
-                results.append((img_file.name, _create_empty_bill()))
 
             progress.update(main_task, advance=1)
 
@@ -178,20 +173,6 @@ def _collect_images(folder: Path) -> list[Path]:
     return sorted(
         f for f in folder.iterdir()
         if f.is_file() and f.suffix.lower() in extensions
-    )
-
-
-def _create_empty_bill() -> ExtractedBill:
-    """Create an empty bill with null values for graceful degradation."""
-    return ExtractedBill(
-        vendor=None,
-        date=None,
-        invoice_number=None,
-        items=[],
-        subtotal=None,
-        tax=None,
-        total=None,
-        currency="EUR"
     )
 
 
@@ -227,9 +208,9 @@ def _display_results(results: list[tuple[str, ExtractedBill]], verbose: bool):
                 console.print(f"  Subtotal: {bill.subtotal:.2f}")
 
 
-def _format_json_output(bill: ExtractedBill, filename: str) -> dict[str, Any]:
+def _format_json_output(bill: ExtractedBill, filename: str) -> dict:
     """Format bill data into the required JSON output format."""
-    output: dict[str, Any] = {}
+    output = {}
 
     if bill.date:
         output["date"] = bill.date.isoformat()

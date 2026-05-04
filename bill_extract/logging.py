@@ -13,18 +13,17 @@ DATE_FORMAT = "[%x]"
 
 def setup_logging(level: str = "INFO", rich_handler: bool = True) -> logging.Logger:
     """Configure logging with optional RichHandler.
-
+    
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         rich_handler: Whether to use RichHandler for rich output
-
+        
     Returns:
         Configured logger
     """
     logger = logging.getLogger("bill_extract")
     logger.setLevel(getattr(logging, level.upper()))
 
-    handler: logging.Handler  # type: ignore[assignment]
     if rich_handler:
         handler = RichHandler(
             console=console,
@@ -40,18 +39,17 @@ def setup_logging(level: str = "INFO", rich_handler: bool = True) -> logging.Log
     if not logger.handlers:
         logger.addHandler(handler)
 
-    # Don't set propagate to False - it prevents caplog from capturing logs
-    # logger.propagate = False
+    logger.propagate = False
 
     return logger
 
 
 def get_logger(name: str = "bill_extract") -> logging.Logger:
     """Get a logger instance.
-
+    
     Args:
         name: Logger name
-
+        
     Returns:
         Logger instance
     """

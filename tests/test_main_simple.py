@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+pytest_plugins = []
+
 
 def test_cli_help(capsys):
     """Test --help output."""
@@ -21,7 +23,7 @@ def test_cli_help(capsys):
 
 
 def test_cli_requires_input():
-    """Test that running without args shows help."""
+    """Test that --input is required."""
     if "bill_extract.main" not in sys.modules:
         import importlib
 
@@ -32,8 +34,7 @@ def test_cli_requires_input():
     from bill_extract.main import app
     runner = CliRunner()
     result = runner.invoke(app, [])
-    assert result.exit_code == 0
-    assert "Usage" in result.stdout or "usage" in result.stdout
+    assert result.exit_code == 1
 
 
 def test_collect_images():

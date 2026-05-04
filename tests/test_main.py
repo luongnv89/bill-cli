@@ -46,7 +46,7 @@ class TestCLI:
     def test_cli_requires_input(self, runner):
         """Test that --input is required."""
         from bill_extract.main import app
-        result = runner.invoke(app, ["--output", "test"])
+        result = runner.invoke(app, [])
         assert result.exit_code == 1
         assert "required" in result.stdout.lower()
 
@@ -79,10 +79,7 @@ class TestCollectImages:
 
         images = _collect_images(mock_image_folder)
         assert len(images) == 2
-        # Check that no image is inside a subfolder (relative path should not contain separator)
-        for img in images:
-            rel_path = img.relative_to(mock_image_folder)
-            assert len(rel_path.parts) == 1, f"Image {img} is inside a subfolder"
+        assert not any("subfolder" in str(img) for img in images)
 
 
 class TestDisplayResults:

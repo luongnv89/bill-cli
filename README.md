@@ -30,58 +30,12 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Install the CLI
+### Basic Usage
+
+Run the CLI:
 
 ```bash
-pip install -e .
-```
-
-Or with OCR support:
-
-```bash
-pip install -e ".[ocr]"
-```
-
-### Run the CLI
-
-```bash
-bill-extract --help
-```
-
-### CLI Options
-
-```
- Usage: bill-extract [OPTIONS]
-
- Extract information from bills and invoices.
-
-╭─ Options ──────────────────────────────────────────────────────╮
-│ --input PATH      -i  Input file or folder path              │
-│ --output PATH    -o  Output directory                     │
-│ --lang TEXT      -l  OCR language (default: fr)             │
-│ --preprocess    -p  Enable image preprocessing           │
-│ --verbose       -v  Enable verbose output               │
-│ --debug         -d  Enable debug output                 │
-│ --help          -h  Show this message and exit            │
-╰───────────────────────────────────────────────────────────╯
-```
-
-### Extract from a single image
-
-```bash
-bill-extract --input invoice.jpg --output results/
-```
-
-### Extract from multiple images in a folder
-
-```bash
-bill-extract --input ./invoices/ --output ./output/
-```
-
-### Extract with preprocessing
-
-```bash
-bill-extract --input receipt.png --preprocess --verbose
+bill-extract
 ```
 
 ### Extract from an invoice image
