@@ -33,9 +33,13 @@ def _convert_ocr_results(ocr_results: list) -> list[dict]:
     for result in ocr_results:
         if isinstance(result, tuple) and len(result) == 2:
             bbox, (text, confidence) = result
-            converted.append({"text": text, "confidence": confidence, "bbox": bbox})
+            y_center = 0.0
+            if bbox and len(bbox) >= 4:
+                y_coords = [point[1] for point in bbox[:4]]
+                y_center = sum(y_coords) / len(y_coords)
+            converted.append({"text": text, "confidence": confidence, "bbox": bbox, "y_center": y_center})
         else:
-            converted.append({"text": str(result), "confidence": 0.8, "bbox": []})
+            converted.append({"text": str(result), "confidence": 0.8, "bbox": [], "y_center": 0.0})
     return converted
 
 
