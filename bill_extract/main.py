@@ -26,6 +26,19 @@ console = Console()
 
 logger = get_logger("bill_extract")
 
+
+def _convert_ocr_results(ocr_results: list) -> list[dict]:
+    """Convert OCR results from tuple format to dict format for extractor."""
+    converted = []
+    for result in ocr_results:
+        if isinstance(result, tuple) and len(result) == 2:
+            bbox, (text, confidence) = result
+            converted.append({"text": text, "confidence": confidence, "bbox": bbox})
+        else:
+            converted.append({"text": str(result), "confidence": 0.8, "bbox": []})
+    return converted
+
+
 InputArg = Annotated[Optional[str], typer.Option("--input", "-i", help="Input file or folder path")]
 OutputArg = Annotated[Optional[str], typer.Option("--output", "-o", help="Output directory (default: stdout)")]
 LangArg = Annotated[str, typer.Option("--lang", "-l", help="OCR language")]
@@ -115,17 +128,18 @@ def main(
 
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
                     if processed is not None:
-                        ocr_results = ocr_engine.read_text_from_array(processed)
+                        ocr_results = ocr_engine.extract_text_from_array(processed)
                     else:
-                        ocr_results = ocr_engine.read_text(str(img_file))
+                        ocr_results = ocr_engine.extract_text(str(img_file))
                 else:
                     progress.update(file_task, description=f"[cyan]Running OCR on {img_file.name}...", completed=2)
-                    ocr_results = ocr_engine.read_text(str(img_file))
+                    ocr_results = ocr_engine.extract_text(str(img_file))
 
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
                 progress.update(file_task, description=f"[cyan]Extracting fields from {img_file.name}...", completed=3)
-                bill_data = extractor.extract(ocr_results)
+                ocr_dicts = _convert_ocr_results(ocr_results)
+                bill_data = extractor.extract(ocr_dicts)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data))
 
