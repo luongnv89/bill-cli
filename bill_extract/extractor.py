@@ -396,15 +396,27 @@ class BillExtractor:
 
     def _extract_date(self, text: str) -> Optional[date_type]:
         """Extract date from text."""
+        from datetime import datetime
+
         patterns = [
-            r"(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})",
-            r"(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})",
+            (r"(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})", ["%d", "%m", "%Y"]),
+            (r"(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})", ["%Y", "%m", "%d"]),
         ]
-        for pattern in patterns:
+        for pattern, fmt_parts in patterns:
             match = re.search(pattern, text)
             if match:
                 try:
-                    return date.today()
+                    groups = match.groups()
+                    if len(groups) == 3:
+                        year = int(groups[0])
+                        if year < 100:
+                            year += 2000 if year < 50 else 1900
+                        parts = [year if i == 0 else int(groups[i]) for i in range(3)]
+                        if fmt_parts[0] == "%Y":
+                            parsed = datetime(parts[0], parts[1], parts[2]).date()
+                        else:
+                            parsed = datetime(parts[2], parts[1], parts[0]).date()
+                        return parsed
                 except Exception:
                     pass
         return None
