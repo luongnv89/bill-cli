@@ -4,7 +4,7 @@ Extract structured information from bills and invoices using OCR.
 
 ## Features
 
-- **Dual OCR Support**: EasyOCR (default) and PaddleOCR engines with automatic fallback
+- **Dual OCR Support**: EasyOCR (default) and PaddleOCR engines
 - **Data Extraction**: Automatic vendor, date, invoice number, and amount parsing
 - **Image Preprocessing**: Built-in image enhancement and denoising
 - **CLI Interface**: Simple command-line interface with rich formatting
@@ -183,7 +183,7 @@ bill-cli/
 - **tqdm** - Progress bars
 
 ### OCR Engines (at least one required)
-- **easyocr** - Default OCR engine (Python 3.9-3.13)
+- **easyocr** - Default OCR engine (Python 3.8+)
 - **paddleocr** - Optional OCR engine (Python < 3.14 only)
 - **paddlepaddle** - Deep learning framework for PaddleOCR
 

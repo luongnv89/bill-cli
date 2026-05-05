@@ -65,8 +65,6 @@ class BillOCR:
         self._easyocr_reader = None
 
     def _get_ocr(self):
-        if EASYOCR_AVAILABLE:
-            return None
         if PADDLE_AVAILABLE:
             if self._ocr is None:
                 global FIRST_LOAD
