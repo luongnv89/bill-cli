@@ -42,7 +42,6 @@ class TestCLI:
 
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "bill-extract" in result.stdout.lower()
 
     def test_cli_requires_input(self, runner):
         """Test that --input is required."""

@@ -71,7 +71,7 @@ def main(
     if not input:
         console.print("[bold red]Error:[/bold red] --input is required")
         console.print("Use bill-extract --help for usage information")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=2)
 
     input_path = Path(input)
     if not input_path.exists():
