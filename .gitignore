@@ -44,3 +44,6 @@ Thumbs.db
 htmlcov/
 .coverage
 *.log
+
+# Generated test snapshots — written by test runs, never committed.
+tests/snapshots/

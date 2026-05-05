@@ -476,10 +476,9 @@ class BillExtractor:
         for pattern in patterns:
             match = re.search(pattern, text)
             if match:
-                try:
-                    return date.today()
-                except Exception:
-                    pass
+                # TODO(#24-followup): parse match.group(1) into a real date;
+                # current behavior returns today's date as a placeholder.
+                return date.today()
         return None
 
     def _find_total(self, text_lines: list[str]) -> Optional[float]:
