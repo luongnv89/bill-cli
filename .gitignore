@@ -45,4 +45,5 @@ htmlcov/
 .coverage
 *.log
 
-tests/snapshots/
+# Generated per-sample snapshots; tracked fixtures (test_*.json) stay versioned.
+tests/snapshots/facture*.json
