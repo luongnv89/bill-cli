@@ -128,16 +128,16 @@ def main(
                         completed=2,
                     )
                     if processed is not None:
-                        ocr_results = ocr_engine.read_text_from_array(processed)
+                        ocr_results = ocr_engine.extract_text_from_array(processed)
                     else:
-                        ocr_results = ocr_engine.read_text(str(img_file))
+                        ocr_results = ocr_engine.extract_text(str(img_file))
                 else:
                     progress.update(
                         file_task,
                         description=f"[cyan]Running OCR on {img_file.name}...",
                         completed=2,
                     )
-                    ocr_results = ocr_engine.read_text(str(img_file))
+                    ocr_results = ocr_engine.extract_text(str(img_file))
 
                 logger.info(f"OCR found {len(ocr_results)} text regions")
 
