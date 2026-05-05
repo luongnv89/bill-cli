@@ -4,7 +4,7 @@ Extract structured information from bills and invoices using OCR.
 
 ## Features
 
-- **OCR**: PaddleOCR-powered text recognition
+- **Dual OCR Support**: EasyOCR (default) and PaddleOCR engines
 - **Data Extraction**: Automatic vendor, date, invoice number, and amount parsing
 - **Image Preprocessing**: Built-in image enhancement and denoising
 - **CLI Interface**: Simple command-line interface with rich formatting
@@ -16,30 +16,70 @@ Extract structured information from bills and invoices using OCR.
 - Python 3.9+
 - pip or uv
 
+### OCR Engine Support
+
+This tool supports two OCR engines:
+
+1. **EasyOCR** (recommended, default)
+   - Supports Python 3.8+
+   - Easier installation, no platform-specific issues
+   - Good accuracy for most documents
+
+2. **PaddleOCR** (optional)
+   - Supports Python 3.8-3.13 (not compatible with Python 3.14+)
+   - May have installation issues on some platforms
+   - Excellent accuracy for complex documents
+
+The application will use EasyOCR if available, otherwise PaddleOCR.
+
 ### Install from source
 
+**Option 1: Install with EasyOCR (recommended)**
+
 ```bash
-pip install -e .
+pip install -e ".[ocr]"
 ```
 
-Or install dependencies directly:
+**Option 2: Install with PaddleOCR (Python < 3.14 only)**
+
+```bash
+pip install -e ".[paddle]"
+```
+
+**Option 3: Install both engines**
+
+```bash
+pip install -e ".[ocr,paddle]"
+```
+
+**Option 4: Install from requirements.txt**
 
 ```bash
 pip install -r requirements.txt
 ```
 
+This installs EasyOCR by default. To use PaddleOCR, uncomment the paddle lines in `requirements.txt`.
+
 ## Usage
 
 ### Install the CLI
 
-```bash
-pip install -e .
-```
-
-Or with OCR support:
+**With EasyOCR (recommended):**
 
 ```bash
 pip install -e ".[ocr]"
+```
+
+**With PaddleOCR (Python < 3.14 only):**
+
+```bash
+pip install -e ".[paddle]"
+```
+
+**With both engines:**
+
+```bash
+pip install -e ".[ocr,paddle]"
 ```
 
 ### Run the CLI
@@ -134,14 +174,18 @@ bill-cli/
 
 ## Dependencies
 
-- **paddleocr** - OCR engine
-- **paddlepaddle** - Deep learning framework
+### Core Dependencies
 - **opencv-python** - Image processing
 - **pillow** - Image handling
 - **typer** - CLI framework
 - **pydantic** - Data validation
 - **rich** - Terminal rendering
 - **tqdm** - Progress bars
+
+### OCR Engines (at least one required)
+- **easyocr** - Default OCR engine (Python 3.8+)
+- **paddleocr** - Optional OCR engine (Python < 3.14 only)
+- **paddlepaddle** - Deep learning framework for PaddleOCR
 
 ## Development
 

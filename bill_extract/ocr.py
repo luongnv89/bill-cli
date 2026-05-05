@@ -147,29 +147,7 @@ class BillOCR:
         """
         self._validate_image(image_path)
 
-        if PADDLE_AVAILABLE:
-            ocr = self._get_ocr()
-            try:
-                result = ocr.ocr(image_path, cls=True)
-            except Exception as e:
-                logger.error(f"OCR processing failed for {image_path}: {e}")
-                raise CorruptImageError(
-                    f"Failed to process image: {image_path}. "
-                    f"The image may be corrupted or in an unsupported format. Error: {str(e)}"
-                ) from e
-
-            if not result or not result[0]:
-                logger.warning(
-                    f"OCR returned no text for {image_path}. Try preprocessing or use a better quality image."
-                )
-                raise NoTextDetectedError(
-                    f"OCR returned no text for {image_path}. "
-                    f"Try preprocessing or use a better quality screenshot."
-                )
-
-            ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
-
-        elif EASYOCR_AVAILABLE:
+        if EASYOCR_AVAILABLE:
             reader = self._get_easyocr()
             try:
                 result = reader.readtext(image_path)
@@ -195,6 +173,28 @@ class BillOCR:
                 text = item[1]
                 confidence = item[2]
                 ocr_results.append((bbox, (text, confidence)))
+
+        elif PADDLE_AVAILABLE:
+            ocr = self._get_ocr()
+            try:
+                result = ocr.ocr(image_path, cls=True)
+            except Exception as e:
+                logger.error(f"OCR processing failed for {image_path}: {e}")
+                raise CorruptImageError(
+                    f"Failed to process image: {image_path}. "
+                    f"The image may be corrupted or in an unsupported format. Error: {str(e)}"
+                ) from e
+
+            if not result or not result[0]:
+                logger.warning(
+                    f"OCR returned no text for {image_path}. Try preprocessing or use a better quality image."
+                )
+                raise NoTextDetectedError(
+                    f"OCR returned no text for {image_path}. "
+                    f"Try preprocessing or use a better quality screenshot."
+                )
+
+            ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
 
         else:
             raise ImportError("No OCR backend available")
@@ -222,28 +222,7 @@ class BillOCR:
         Raises:
             NoTextDetectedError: If no text is detected in the image.
         """
-        if PADDLE_AVAILABLE:
-            ocr = self._get_ocr()
-            try:
-                result = ocr.ocr(image_array, cls=True)
-            except Exception as e:
-                logger.error(f"OCR processing failed for array input: {e}")
-                raise CorruptImageError(
-                    f"Failed to process image array: {str(e)}. The image data may be corrupted."
-                ) from e
-
-            if not result or not result[0]:
-                logger.warning(
-                    "OCR returned no text from preprocessed image. Try a better quality original image."
-                )
-                raise NoTextDetectedError(
-                    "OCR returned no text from preprocessed image. "
-                    "Try a better quality original image or adjust preprocessing."
-                )
-
-            ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
-
-        elif EASYOCR_AVAILABLE:
+        if EASYOCR_AVAILABLE:
             reader = self._get_easyocr()
             try:
                 result = reader.readtext(image_array)
@@ -268,6 +247,27 @@ class BillOCR:
                 text = item[1]
                 confidence = item[2]
                 ocr_results.append((bbox, (text, confidence)))
+
+        elif PADDLE_AVAILABLE:
+            ocr = self._get_ocr()
+            try:
+                result = ocr.ocr(image_array, cls=True)
+            except Exception as e:
+                logger.error(f"OCR processing failed for array input: {e}")
+                raise CorruptImageError(
+                    f"Failed to process image array: {str(e)}. The image data may be corrupted."
+                ) from e
+
+            if not result or not result[0]:
+                logger.warning(
+                    "OCR returned no text from preprocessed image. Try a better quality original image."
+                )
+                raise NoTextDetectedError(
+                    "OCR returned no text from preprocessed image. "
+                    "Try a better quality original image or adjust preprocessing."
+                )
+
+            ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
 
         else:
             raise ImportError("No OCR backend available")
