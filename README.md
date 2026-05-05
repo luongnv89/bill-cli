@@ -18,19 +18,19 @@ Extract structured information from bills and invoices using OCR.
 
 ### OCR Engine Support
 
-This tool supports two OCR engines with automatic fallback:
+This tool supports two OCR engines:
 
 1. **EasyOCR** (recommended, default)
-   - Supports Python 3.9 - 3.13
+   - Supports Python 3.8+
    - Easier installation, no platform-specific issues
    - Good accuracy for most documents
 
 2. **PaddleOCR** (optional)
-   - Only supports Python < 3.14
+   - Supports Python 3.8-3.13 (not compatible with Python 3.14+)
    - May have installation issues on some platforms
    - Excellent accuracy for complex documents
 
-The application will automatically use EasyOCR if available, falling back to PaddleOCR if needed.
+The application will use EasyOCR if available, otherwise PaddleOCR.
 
 ### Install from source
 
