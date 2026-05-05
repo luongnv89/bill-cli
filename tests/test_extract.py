@@ -8,7 +8,7 @@ import pytest
 
 # Add tests directory to path for importing conftest helpers
 sys.path.insert(0, str(Path(__file__).parent))
-from conftest import load_snapshot, save_snapshot, SAMPLES_DIR, SNAPSHOT_DIR
+from conftest import SAMPLES_DIR, load_snapshot, save_snapshot
 
 
 class TestModuleImport:
@@ -17,12 +17,14 @@ class TestModuleImport:
     def test_import_bill_extract(self):
         """Test main module imports successfully."""
         import bill_extract
+
         assert hasattr(bill_extract, "__version__")
         assert bill_extract.__version__ == "0.1.0"
 
     def test_import_main_app(self):
         """Test CLI app imports successfully."""
         from bill_extract.main import app
+
         assert app is not None
 
 

@@ -31,6 +31,7 @@ def sample_images():
 def cli_runner():
     """Provide Typer CLI runner for testing."""
     from typer.testing import CliRunner
+
     return CliRunner()
 
 
@@ -38,6 +39,7 @@ def cli_runner():
 def bill_extract_app():
     """Import and return the main bill_extract app."""
     from bill_extract.main import app
+
     return app
 
 
