@@ -101,7 +101,7 @@ class BillOCR:
             raise CorruptImageError(
                 f"Image file appears corrupt or invalid: {image_path}. "
                 f"Error: {str(e)}. Try a different image or check if it's a valid image format."
-            )
+            ) from e
 
     def extract_text(self, image_path: str) -> list[tuple[list, tuple[str, float]]]:
         """Extract text from an image file.
@@ -126,7 +126,7 @@ class BillOCR:
             raise CorruptImageError(
                 f"Failed to process image: {image_path}. "
                 f"The image may be corrupted or in an unsupported format. Error: {str(e)}"
-            )
+            ) from e
 
         if not result or not result[0]:
             logger.warning(
@@ -168,7 +168,7 @@ class BillOCR:
             logger.error(f"OCR processing failed for array input: {e}")
             raise CorruptImageError(
                 f"Failed to process image array: {str(e)}. The image data may be corrupted."
-            )
+            ) from e
 
         if not result or not result[0]:
             logger.warning(

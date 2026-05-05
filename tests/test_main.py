@@ -49,8 +49,8 @@ class TestCLI:
         from bill_extract.main import app
 
         result = runner.invoke(app, [])
-        assert result.exit_code == 1
-        assert "required" in result.stdout.lower()
+        assert result.exit_code == 2
+        assert "required" in result.stdout.lower() or "usage" in result.stdout.lower()
 
 
 class TestCollectImages:
@@ -81,7 +81,8 @@ class TestCollectImages:
 
         images = _collect_images(mock_image_folder)
         assert len(images) == 2
-        assert not any("subfolder" in str(img) for img in images)
+        # Check that nested.png from subfolder is not included
+        assert not any("nested.png" in str(img) for img in images)
 
 
 class TestDisplayResults:

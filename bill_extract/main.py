@@ -9,10 +9,12 @@ from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
-from bill_extract.logging import setup_logging
+from bill_extract.extractor import BillExtractor, ExtractedBill
+from bill_extract.logging import get_logger, setup_logging
 from bill_extract.ocr import CorruptImageError, NoTextDetectedError, OCREngine
 
 console = Console()
+logger = get_logger("bill_extract")
 
 try:
     from bill_extract.preprocess import preprocessing_pipeline
@@ -21,8 +23,6 @@ try:
 except ImportError:
     PREPROCESS_AVAILABLE = False
     preprocessing_pipeline = None
-
-from bill_extract.extractor import BillExtractor, ExtractedBill
 
 app = typer.Typer(name="bill-extract", add_completion=False, no_args_is_help=True)
 
@@ -82,7 +82,7 @@ def main(
         ocr_engine = OCREngine(lang=lang)
     except ImportError as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     extractor = BillExtractor()
     results: list[tuple[str, ExtractedBill]] = []
@@ -263,9 +263,10 @@ def _format_json_output(bill: ExtractedBill, filename: str) -> dict:
     return output
 
 
-def _save_results(results: list[tuple[str, ExtractedBill, bool]], output_dir: Path):
+def _save_results(results: list[tuple], output_dir: Path):
     """Save results to output directory."""
-    for filename, bill, _ in results:
+    for item in results:
+        filename, bill = item[0], item[1]
         output_file = output_dir / f"{Path(filename).stem}.json"
         output = _format_json_output(bill, filename)
         with open(output_file, "w") as f:
@@ -287,9 +288,9 @@ def _print_batch_summary(results: list[tuple[str, ExtractedBill, bool]], total: 
         console.print(f"  Failed: [green]{failed}[/green]")
 
 
-def _print_json_output(results: list[tuple[str, ExtractedBill, bool]]):
+def _print_json_output(results: list[tuple]):
     """Print results as JSON to stdout."""
-    output = [_format_json_output(bill, filename) for filename, bill, _ in results]
+    output = [_format_json_output(item[1], item[0]) for item in results]
     console.print_json(json.dumps(output, indent=2))
 
 

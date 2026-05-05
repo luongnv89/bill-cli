@@ -1,6 +1,5 @@
 """Image preprocessing utilities."""
 
-
 import cv2
 import numpy as np
 from PIL import Image
@@ -93,10 +92,10 @@ def correct_skew(image: np.ndarray) -> np.ndarray:
 def enhance_contrast(image: np.ndarray) -> np.ndarray:
     """Enhance image contrast."""
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
+    l_channel, a, b = cv2.split(lab)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l = clahe.apply(l)
-    enhanced = cv2.merge([l, a, b])
+    l_channel = clahe.apply(l_channel)
+    enhanced = cv2.merge([l_channel, a, b])
     return cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
 
 
