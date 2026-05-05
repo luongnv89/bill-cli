@@ -45,5 +45,5 @@ htmlcov/
 .coverage
 *.log
 
-# Generated per-sample snapshots; tracked fixtures (test_*.json) stay versioned.
-tests/snapshots/facture*.json
+# Generated test snapshots — written by test runs, never committed.
+tests/snapshots/

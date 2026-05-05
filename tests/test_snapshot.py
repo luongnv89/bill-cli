@@ -30,19 +30,19 @@ def sample_images():
     return sorted(SAMPLES_DIR.glob("facture*.png"))
 
 
-def read_snapshot(name: str) -> dict | None:
+def read_snapshot(name: str, base_dir: Path = SNAPSHOT_DIR) -> dict | None:
     """Read a snapshot file."""
-    snapshot_file = SNAPSHOT_DIR / f"{name}.json"
+    snapshot_file = base_dir / f"{name}.json"
     if snapshot_file.exists():
         with open(snapshot_file) as f:
             return json.load(f)
     return None
 
 
-def write_snapshot(name: str, data: dict):
+def write_snapshot(name: str, data: dict, base_dir: Path = SNAPSHOT_DIR):
     """Write a snapshot file."""
-    SNAPSHOT_DIR.mkdir(exist_ok=True)
-    snapshot_file = SNAPSHOT_DIR / f"{name}.json"
+    base_dir.mkdir(exist_ok=True)
+    snapshot_file = base_dir / f"{name}.json"
     with open(snapshot_file, "w") as f:
         json.dump(data, f, indent=2)
 
@@ -109,21 +109,21 @@ class TestSampleInvoiceExtraction:
 class TestSnapshotComparison:
     """Test snapshot comparison for JSON output."""
 
-    def test_write_and_compare_snapshots(self, snapshot_dir):
+    def test_write_and_compare_snapshots(self, tmp_path):
         """Test that snapshots can be written and compared."""
         test_data = {"date": "2024-03-15", "amount": 150.00, "id": "FA2024-001"}
 
-        write_snapshot("test_snapshot", test_data)
-        read_data = read_snapshot("test_snapshot")
+        write_snapshot("test_snapshot", test_data, base_dir=tmp_path)
+        read_data = read_snapshot("test_snapshot", base_dir=tmp_path)
 
         assert read_data == test_data
 
-    def test_snapshot_with_null_values(self, snapshot_dir):
+    def test_snapshot_with_null_values(self, tmp_path):
         """Test snapshot handles null/missing values."""
         test_data = {"date": None, "amount": None, "id": "FA2024-001"}
 
-        write_snapshot("test_nulls", test_data)
-        read_data = read_snapshot("test_nulls")
+        write_snapshot("test_nulls", test_data, base_dir=tmp_path)
+        read_data = read_snapshot("test_nulls", base_dir=tmp_path)
 
         assert read_data["id"] == "FA2024-001"
         assert read_data["date"] is None
