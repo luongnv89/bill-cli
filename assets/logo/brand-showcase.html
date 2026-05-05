@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BillCLI Brand Identity</title>
+  <style>
+    :root {
+      --base: #0A0A0A;
+      --accent: #00FF41;
+      --text: #1a1a1a;
+      --text-light: #fafafa;
+      --bg: #ffffff;
+      --bg-alt: #f5f5f5;
+      --gray: #666666;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .light-bg { background: #fafafa; }
+    .dark-bg { background: #0a0a0a; color: var(--text-light); }
+    header {
+      padding: 80px 40px;
+      text-align: center;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    }
+    header h1 {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--text-light);
+      margin-bottom: 16px;
+    }
+    header p {
+      font-size: 20px;
+      color: #888;
+    }
+    section {
+      padding: 60px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 32px;
+      color: var(--text);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+    }
+    .card {
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .logo-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      border-radius: 8px;
+    }
+    .logo-display svg {
+      max-width: 100%;
+      height: auto;
+    }
+    .color-chip {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px;
+      background: var(--bg-alt);
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .color-swatch {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    .color-info code {
+      font-size: 14px;
+      color: var(--gray);
+    }
+    .usage-list {
+      list-style: none;
+    }
+    .usage-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .usage-list li::before {
+      content: "→";
+      margin-right: 12px;
+      color: var(--accent);
+    }
+    footer {
+      padding: 40px;
+      text-align: center;
+      background: var(--bg-alt);
+      color: var(--gray);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="margin-bottom: 40px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" width="240" height="54">
+        <rect x="8" y="8" width="56" height="56" rx="6" fill="none" stroke="#ffffff" stroke-width="3"/>
+        <line x1="20" y1="24" x2="52" y2="24" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+        <line x1="20" y1="36" x2="44" y2="36" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="48" cy="48" r="10" fill="none" stroke="#00FF41" stroke-width="2.5"/>
+        <text x="80" y="44" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#ffffff">BillCLI</text>
+      </svg>
+    </div>
+    <h1>BillCLI Brand Identity</h1>
+    <p>Extract structured information from bills and invoices using OCR</p>
+  </header>
+
+  <section>
+    <h2>Design Rationale</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Symbol Meaning</h3>
+        <p>The mark represents a document/invoice with scan lines and an OCR detection circle, embodying the tool's purpose of extracting data from bills.</p>
+      </div>
+      <div class="card">
+        <h3>Typography</h3>
+        <p>Uses <strong>Inter</strong> — a clean, modern sans-serif that renders sharply at all sizes. The wordmark "BillCLI" combines the product name with the CLI tool indicator.</p>
+      </div>
+      <div class="card">
+        <h3>Color Choices</h3>
+        <p><strong>#0A0A0A</strong> (base): Professional, serious tone suitable for financial/billing tools.<br><strong>#00FF41</strong> (accent): Neon green represents OCR scan detection and digital precision.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="light-bg">
+    <h2>Logo Variants</h2>
+    <div class="grid" style="margin-bottom: 32px;">
+      <div class="card">
+        <h3>Mark (64×64)</h3>
+        <div class="logo-display light-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+            <rect x="8" y="8" width="48" height="48" rx="6" fill="none" stroke="#0A0A0A" stroke-width="3"/>
+            <line x1="18" y1="22" x2="46" y2="22" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round"/>
+            <line x1="18" y1="32" x2="38" y2="32" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="44" cy="42" r="8" fill="none" stroke="#00FF41" stroke-width="2.5"/>
+          </svg>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Full Logo (320×72)</h3>
+        <div class="logo-display light-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" width="200" height="45">
+            <rect x="8" y="8" width="56" height="56" rx="6" fill="none" stroke="#0A0A0A" stroke-width="3"/>
+            <line x1="20" y1="24" x2="52" y2="24" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round"/>
+            <line x1="20" y1="36" x2="44" y2="36" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="48" cy="48" r="10" fill="none" stroke="#00FF41" stroke-width="2.5"/>
+            <text x="80" y="44" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#0A0A0A">BillCLI</text>
+          </svg>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Wordmark (180×40)</h3>
+        <div class="logo-display light-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" width="140" height="31">
+            <text x="90" y="28" font-family="Inter, system-ui, sans-serif" font-size="24" font-weight="700" fill="#0A0A0A" text-anchor="middle">BillCLI</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>Icon (512×512)</h3>
+        <div class="logo-display light-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="128" height="128">
+            <rect x="64" y="64" width="384" height="384" rx="48" fill="none" stroke="#0A0A0A" stroke-width="20"/>
+            <line x1="144" y1="176" x2="368" y2="176" stroke="#0A0A0A" stroke-width="20" stroke-linecap="round"/>
+            <line x1="144" y1="256" x2="304" y2="256" stroke="#0A0A0A" stroke-width="20" stroke-linecap="round"/>
+            <circle cx="352" cy="336" r="64" fill="none" stroke="#00FF41" stroke-width="16"/>
+          </svg>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Favicon (16×16)</h3>
+        <div class="logo-display light-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="32" height="32">
+            <rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="#0A0A0A" stroke-width="1.5"/>
+            <line x1="5" y1="6" x2="11" y2="6" stroke="#0A0A0A" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="10" cy="11" r="3" fill="none" stroke="#00FF41" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark-bg">
+    <h2 style="color: #fff;">On Dark Backgrounds</h2>
+    <div class="grid">
+      <div class="card" style="background: #1a1a1a;">
+        <h3 style="color: #fff;">White Logo</h3>
+        <div class="logo-display dark-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" width="200" height="45">
+            <rect x="8" y="8" width="56" height="56" rx="6" fill="none" stroke="#ffffff" stroke-width="3"/>
+            <line x1="20" y1="24" x2="52" y2="24" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+            <line x1="20" y1="36" x2="44" y2="36" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="48" cy="48" r="10" fill="none" stroke="#00FF41" stroke-width="2.5"/>
+            <text x="80" y="44" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="700" fill="#ffffff">BillCLI</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Color Palette</h2>
+    <div class="grid">
+      <div class="color-chip">
+        <div class="color-swatch" style="background: #0A0A0A;"></div>
+        <div class="color-info">
+          <strong>Base / Dark</strong><br>
+          <code>#0A0A0A</code>
+        </div>
+      </div>
+      <div class="color-chip">
+        <div class="color-swatch" style="background: #00FF41;"></div>
+        <div class="color-info">
+          <strong>Accent / Scan Green</strong><br>
+          <code>#00FF41</code>
+        </div>
+      </div>
+      <div class="color-chip">
+        <div class="color-swatch" style="background: #FFFFFF; border: 1px solid #ddd;"></div>
+        <div class="color-info">
+          <strong>White</strong><br>
+          <code>#FFFFFF</code>
+        </div>
+      </div>
+      <div class="color-chip">
+        <div class="color-swatch" style="background: #000000;"></div>
+        <div class="color-info">
+          <strong>Black</strong><br>
+          <code>#000000</code>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="light-bg">
+    <h2>Usage Guidelines</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Do</h3>
+        <ul class="usage-list">
+          <li>Use the logo at clear sizes (min 16px for favicon)</li>
+          <li>Maintain padding equal to mark height</li>
+          <li>Use white logo on dark backgrounds</li>
+          <li>Use black logo on light backgrounds</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Don't</h3>
+        <ul class="usage-list">
+          <li>Stretch or distort the logo</li>
+          <li>Rotate or re-angle the mark</li>
+          <li>Add effects (shadows, gradients)</li>
+          <li>Re-color individual elements</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>BillCLI Brand Identity • Generated for Bill Extractor CLI</p>
+  </footer>
+</body>
+</html>
