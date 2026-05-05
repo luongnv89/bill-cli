@@ -36,10 +36,8 @@ def setup_logging(level: str = "INFO", rich_handler: bool = True) -> logging.Log
         formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
         handler.setFormatter(formatter)
 
-    if not logger.handlers:
+    if not any(isinstance(h, RichHandler) for h in logger.handlers):
         logger.addHandler(handler)
-
-    logger.propagate = False
 
     return logger
 
