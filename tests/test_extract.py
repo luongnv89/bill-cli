@@ -1,10 +1,13 @@
 """Tests for bill_extract module with snapshot validation."""
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
 
+# Add tests directory to path for importing conftest helpers
+sys.path.insert(0, str(Path(__file__).parent))
 from conftest import load_snapshot, save_snapshot, SAMPLES_DIR, SNAPSHOT_DIR
 
 

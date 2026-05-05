@@ -27,7 +27,7 @@ except ImportError:
 app = typer.Typer(name="bill-extract", add_completion=False, no_args_is_help=True)
 
 
-@app.callback()
+@app.command()
 def main(
     ctx: typer.Context,
     input: Annotated[
