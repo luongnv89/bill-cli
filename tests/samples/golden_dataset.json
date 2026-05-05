@@ -1,0 +1,46 @@
+{
+  "description": "Golden dataset for bill extraction testing",
+  "source_dir": "../real-samples",
+  "samples": [
+    {
+      "file": "IMG_3526.png",
+      "expected": {
+        "amount": 158.0,
+        "invoice_id": null
+      },
+      "notes": "IKEA receipt - id from barcode (not extracted)"
+    },
+    {
+      "file": "IMG_3531.png",
+      "expected": {
+        "amount": 40.0,
+        "invoice_id": "21813"
+      },
+      "notes": "AMI SUSHI - ticket n 21813"
+    },
+    {
+      "file": "Screenshot 2026-05-03 at 15.13.45.png",
+      "expected": {
+        "amount": 33.65,
+        "invoice_id": null
+      },
+      "notes": "TotalEnergies - N de ticket"
+    },
+    {
+      "file": "Screenshot 2026-05-03 at 15.16.52.png",
+      "expected": {
+        "amount": 40.32,
+        "invoice_id": null
+      },
+      "notes": "TotalEnergies - N de ticket"
+    },
+    {
+      "file": "Screenshot 2026-05-03 at 15.19.03.png",
+      "expected": {
+        "amount": 37.61,
+        "invoice_id": "FR00410321830"
+      },
+      "notes": "TotalEnergies"
+    }
+  ]
+}
