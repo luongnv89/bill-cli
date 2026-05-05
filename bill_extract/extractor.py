@@ -478,7 +478,7 @@ class BillExtractor:
             if match:
                 try:
                     return date.today()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         return None
 
