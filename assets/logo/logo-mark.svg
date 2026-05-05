@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Bill Extractor Logo Mark - Geometric Bill/Document -->
+  <rect x="8" y="8" width="48" height="48" rx="6" fill="none" stroke="#0A0A0A" stroke-width="3"/>
+  <line x1="18" y1="22" x2="46" y2="22" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round"/>
+  <line x1="18" y1="32" x2="38" y2="32" stroke="#0A0A0A" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="44" cy="42" r="8" fill="none" stroke="#00FF41" stroke-width="2.5"/>
+</svg>
