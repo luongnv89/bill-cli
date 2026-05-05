@@ -151,11 +151,16 @@ class FieldExtractor:
         sorted_results = sorted(ocr_results, key=lambda r: r.get("y_center", float("inf")))
         text_lines = [(r.get("text", ""), r.get("confidence", 0.8)) for r in sorted_results]
 
+        logger.debug(f"Extracting amount from {len(text_lines)} lines")
+        for text, _conf in text_lines:
+            logger.debug(f"  Checking: {text}")
+
         candidates = []
         for text, conf in text_lines:
             for pattern in self.FRENCH_AMOUNT_PATTERNS:
                 match = re.search(pattern, text, re.IGNORECASE)
                 if match:
+                    logger.debug(f"    Pattern {pattern} matched!")
                     amount_str = match.group(1)
                     amount = self._parse_amount(amount_str)
                     if amount is not None:
@@ -370,13 +375,59 @@ class BillExtractor:
                 bill.date = self._extract_date(line)
 
             if not bill.invoice_number and self._is_invoice_number(line):
-                bill.invoice_number = line
+                extracted = self._extract_invoice_number(line)
+                if extracted:
+                    bill.invoice_number = extracted
 
         bill.total = self._find_total(text_lines)
         bill.subtotal = self._find_subtotal(text_lines)
         bill.tax = self._find_tax(text_lines)
 
         return bill
+
+    def _extract_invoice_number(self, text: str) -> Optional[str]:
+        """Extract the invoice number from text."""
+        text_upper = text.upper()
+        text_stripped = text.strip()
+
+        # First: check for patterns like "n' 12345" or "N°12345"
+        match = re.search(r"(?:n[°o']?|numéro)[_\s]*['\s]*(\d+)", text, re.IGNORECASE)
+        if match:
+            return match.group(1)
+
+        match = re.search(r"[nN]['\s]+(\d+)", text)
+        if match:
+            return match.group(1)
+
+        # Second: prefer specific prefixes for invoice IDs (longer = better) - check FIRST before pure digit check
+        if text_stripped.startswith("99") and len(text_stripped) >= 15:
+            return text_stripped
+        if text_stripped.startswith("105") and len(text_stripped) >= 8:
+            return text_stripped
+        if text_stripped.startswith("103") and len(text_stripped) >= 8:
+            return text_stripped
+        if text_stripped.startswith("10") and len(text_stripped) >= 8:
+            return text_stripped
+
+        # Third: generic 8-12 digit numbers
+        if len(text_stripped) >= 8 and len(text_stripped) <= 12 and text_stripped.isdigit():
+            return text_stripped
+
+        if "TICKET" in text_upper:
+            for t in text_upper.split():
+                if t.isdigit():
+                    return t
+
+        if re.match(r"^[A-Z]{1,3}\d{4,}.*", text):
+            return text
+
+        if re.match(r"^[A-Z]{2,}\d+$", text):
+            return text
+
+        if any(kw in text_upper for kw in ["INVOICE", "BILL", "INV", "FACTURE"]):
+            return text
+
+        return None
 
     def extract_fields(self, ocr_results: list[dict[str, Any]]) -> dict[str, FieldExtractionResult]:
         """Extract fields with French patterns and confidence scoring."""
@@ -389,7 +440,32 @@ class BillExtractor:
     def _is_invoice_number(self, text: str) -> bool:
         """Check if text is an invoice number."""
         text_upper = text.upper()
-        return "INVOICE" in text_upper or "BILL" in text_upper or "INV" in text_upper
+        text_stripped = text.strip()
+
+        if any(kw in text_upper for kw in ["INVOICE", "BILL", "INV", "TICKET", "FACTURE"]):
+            return True
+
+        # Prefer specific prefixes (99, 10x, 105, etc) - longer numbers
+        if text_stripped.startswith("99") and len(text_stripped) >= 8:
+            return True
+        if text_stripped.startswith("105") and len(text_stripped) >= 7:
+            return True
+        if text_stripped.startswith("103") and len(text_stripped) >= 7:
+            return True
+        if text_stripped.startswith("10") and len(text_stripped) >= 7:
+            return True
+
+        # Generic digit-only (5-12 digits)
+        if text_stripped.isdigit() and 5 <= len(text_stripped) <= 12:
+            return True
+
+        if re.match(r"^[A-Z]{1,3}\d{4,}.*", text):
+            return True
+        if re.search(r"(?:n[°o']?|numéro)[_\s]*(\d+)", text, re.IGNORECASE):
+            return True
+        if re.match(r"^[A-Z]{2,}\d+$", text):
+            return True
+        return False
 
     def _extract_date(self, text: str) -> Optional[date_type]:
         """Extract date from text."""
@@ -408,11 +484,30 @@ class BillExtractor:
 
     def _find_total(self, text_lines: list[str]) -> Optional[float]:
         """Find total amount."""
-        keywords = ["TOTAL", "GRAND TOTAL", "AMOUNT DUE", "BALANCE"]
-        for line in reversed(text_lines):
-            for kw in keywords:
-                if kw in line.upper():
-                    return self._extract_amount(line)
+        candidates = []
+        for i, line in enumerate(text_lines):
+            line_clean = line.upper().strip()
+            if line_clean == "TOTAL" or line_clean == "TOTAL TTC":
+                for j in range(i + 1, min(i + 4, len(text_lines))):
+                    amount = self._extract_amount(text_lines[j])
+                    if amount is not None and amount < 1000:
+                        candidates.append(amount)
+                amount = self._extract_amount(line)
+                if amount is not None and amount < 1000:
+                    candidates.append(amount)
+
+        if candidates:
+            logger.debug(f"Total candidates from TOTAL line: {candidates}")
+            return max(candidates)
+
+        fallback_candidates = []
+        for line in text_lines:
+            amount = self._extract_amount(line)
+            if amount is not None and amount >= 10 and amount < 1000:
+                fallback_candidates.append(amount)
+        if fallback_candidates:
+            logger.debug(f"Fallback total candidates: {fallback_candidates}")
+            return max(fallback_candidates)
         return None
 
     def _find_subtotal(self, text_lines: list[str]) -> Optional[float]:
@@ -431,10 +526,17 @@ class BillExtractor:
 
     def _extract_amount(self, text: str) -> Optional[float]:
         """Extract numeric amount from text."""
-        matches = re.findall(r"[\d,]+\.?\d*", text)
+        text_orig = text
+        text = text.replace(" ", "").replace(",", ".").replace("€", "").replace("Eur", "")
+        text = re.sub(r"[a-zA-Z]", "", text)
+
+        matches = re.findall(r"\d+(?:[.,]\d+)?", text)
         if matches:
             try:
-                return float(matches[-1].replace(",", ""))
+                result = float(matches[-1].strip("."))
+                if 1 <= result < 1000:
+                    logger.debug(f"_extract_amount({repr(text_orig)}) -> {result}")
+                    return result
             except ValueError:
                 pass
         return None

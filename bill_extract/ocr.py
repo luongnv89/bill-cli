@@ -1,4 +1,4 @@
-"""OCR functionality using PaddleOCR."""
+"""OCR functionality using PaddleOCR or EasyOCR."""
 
 import time
 from pathlib import Path
@@ -9,6 +9,13 @@ try:
     PADDLE_AVAILABLE = True
 except ImportError:
     PADDLE_AVAILABLE = False
+
+try:
+    import easyocr
+
+    EASYOCR_AVAILABLE = True
+except ImportError:
+    EASYOCR_AVAILABLE = False
 
 from bill_extract.logging import get_logger
 
@@ -36,44 +43,66 @@ class NoTextDetectedError(OCRError):
 
 
 class BillOCR:
-    """PaddleOCR-based text recognition for bill extraction."""
+    """OCR-based text recognition for bill extraction (PaddleOCR or EasyOCR)."""
 
     def __init__(self, use_angle_cls: bool = True, lang: str = "fr", use_gpu: bool = False):
-        """Initialize BillOCR with PaddleOCR.
+        """Initialize BillOCR.
 
         Args:
-            use_angle_cls: Use angle classifier for text orientation.
+            use_angle_cls: Use angle classifier for text orientation (PaddleOCR only).
             lang: Language code (default: "fr" for French).
             use_gpu: Use GPU acceleration (default: False for CPU mode).
         """
-        if not PADDLE_AVAILABLE:
+        if not PADDLE_AVAILABLE and not EASYOCR_AVAILABLE:
             raise ImportError(
-                "paddlepaddle and paddleocr are required. Install with: pip install paddlepaddle paddleocr"
+                "paddlepaddle and paddleocr are required. Install with: pip install paddlepaddle paddleocr\n"
+                "Alternatively, install EasyOCR: pip install easyocr"
             )
         self.use_angle_cls = use_angle_cls
         self.lang = lang
         self.use_gpu = use_gpu
         self._ocr = None
+        self._easyocr_reader = None
 
     def _get_ocr(self):
-        if self._ocr is None:
-            global FIRST_LOAD
-            if FIRST_LOAD:
-                logger.info("[bold cyan]Loading PaddleOCR models...[/bold cyan]")
-                logger.info("[dim]First time loading may take a few minutes[/dim]")
-                FIRST_LOAD = False
+        if PADDLE_AVAILABLE:
+            if self._ocr is None:
+                global FIRST_LOAD
+                if FIRST_LOAD:
+                    logger.info("[bold cyan]Loading PaddleOCR models...[/bold cyan]")
+                    logger.info("[dim]First time loading may take a few minutes[/dim]")
+                    FIRST_LOAD = False
 
-            start = time.time()
-            self._ocr = PaddleOCR(
-                use_angle_cls=self.use_angle_cls,
-                lang=self.lang,
-                use_gpu=self.use_gpu,
-                show_log=False,
-            )
-            elapsed = time.time() - start
-            logger.info(f"[green]OCR models loaded in {elapsed:.1f}s[/green]")
+                start = time.time()
+                self._ocr = PaddleOCR(
+                    use_angle_cls=self.use_angle_cls,
+                    lang=self.lang,
+                    use_gpu=self.use_gpu,
+                    show_log=False,
+                )
+                elapsed = time.time() - start
+                logger.info(f"[green]PaddleOCR models loaded in {elapsed:.1f}s[/green]")
 
-        return self._ocr
+            return self._ocr
+        return None
+
+    def _get_easyocr(self):
+        if EASYOCR_AVAILABLE:
+            if self._easyocr_reader is None:
+                global FIRST_LOAD
+                if FIRST_LOAD:
+                    logger.info("[bold cyan]Loading EasyOCR models...[/bold cyan]")
+                    logger.info("[dim]First time loading may take a few minutes[/dim]")
+                    FIRST_LOAD = False
+
+                start = time.time()
+                lang_code = "fr" if self.lang == "fr" else "en"
+                self._easyocr_reader = easyocr.Reader([lang_code], gpu=self.use_gpu, verbose=False)
+                elapsed = time.time() - start
+                logger.info(f"[green]EasyOCR models loaded in {elapsed:.1f}s[/green]")
+
+            return self._easyocr_reader
+        return None
 
     def _validate_image(self, image_path: str) -> None:
         """Validate image file is readable and not corrupt.
@@ -118,26 +147,58 @@ class BillOCR:
         """
         self._validate_image(image_path)
 
-        ocr = self._get_ocr()
-        try:
-            result = ocr.ocr(image_path, cls=True)
-        except Exception as e:
-            logger.error(f"OCR processing failed for {image_path}: {e}")
-            raise CorruptImageError(
-                f"Failed to process image: {image_path}. "
-                f"The image may be corrupted or in an unsupported format. Error: {str(e)}"
-            ) from e
+        if PADDLE_AVAILABLE:
+            ocr = self._get_ocr()
+            try:
+                result = ocr.ocr(image_path, cls=True)
+            except Exception as e:
+                logger.error(f"OCR processing failed for {image_path}: {e}")
+                raise CorruptImageError(
+                    f"Failed to process image: {image_path}. "
+                    f"The image may be corrupted or in an unsupported format. Error: {str(e)}"
+                ) from e
 
-        if not result or not result[0]:
-            logger.warning(
-                f"OCR returned no text for {image_path}. Try preprocessing or use a better quality image."
-            )
-            raise NoTextDetectedError(
-                f"OCR returned no text for {image_path}. "
-                f"Try preprocessing or use a better quality screenshot."
-            )
+            if not result or not result[0]:
+                logger.warning(
+                    f"OCR returned no text for {image_path}. Try preprocessing or use a better quality image."
+                )
+                raise NoTextDetectedError(
+                    f"OCR returned no text for {image_path}. "
+                    f"Try preprocessing or use a better quality screenshot."
+                )
 
-        ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
+            ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
+
+        elif EASYOCR_AVAILABLE:
+            reader = self._get_easyocr()
+            try:
+                result = reader.readtext(image_path)
+            except Exception as e:
+                logger.error(f"EasyOCR processing failed for {image_path}: {e}")
+                raise CorruptImageError(
+                    f"Failed to process image: {image_path}. "
+                    f"The image may be corrupted or in an unsupported format. Error: {str(e)}"
+                ) from e
+
+            if not result:
+                logger.warning(
+                    f"EasyOCR returned no text for {image_path}. Try preprocessing or use a better quality image."
+                )
+                raise NoTextDetectedError(
+                    f"OCR returned no text for {image_path}. "
+                    f"Try preprocessing or use a better quality screenshot."
+                )
+
+            ocr_results = []
+            for item in result:
+                bbox = item[0]
+                text = item[1]
+                confidence = item[2]
+                ocr_results.append((bbox, (text, confidence)))
+
+        else:
+            raise ImportError("No OCR backend available")
+
         confidences = [item[1][1] for item in ocr_results]
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
@@ -161,25 +222,56 @@ class BillOCR:
         Raises:
             NoTextDetectedError: If no text is detected in the image.
         """
-        ocr = self._get_ocr()
-        try:
-            result = ocr.ocr(image_array, cls=True)
-        except Exception as e:
-            logger.error(f"OCR processing failed for array input: {e}")
-            raise CorruptImageError(
-                f"Failed to process image array: {str(e)}. The image data may be corrupted."
-            ) from e
+        if PADDLE_AVAILABLE:
+            ocr = self._get_ocr()
+            try:
+                result = ocr.ocr(image_array, cls=True)
+            except Exception as e:
+                logger.error(f"OCR processing failed for array input: {e}")
+                raise CorruptImageError(
+                    f"Failed to process image array: {str(e)}. The image data may be corrupted."
+                ) from e
 
-        if not result or not result[0]:
-            logger.warning(
-                "OCR returned no text from preprocessed image. Try a better quality original image."
-            )
-            raise NoTextDetectedError(
-                "OCR returned no text from preprocessed image. "
-                "Try a better quality original image or adjust preprocessing."
-            )
+            if not result or not result[0]:
+                logger.warning(
+                    "OCR returned no text from preprocessed image. Try a better quality original image."
+                )
+                raise NoTextDetectedError(
+                    "OCR returned no text from preprocessed image. "
+                    "Try a better quality original image or adjust preprocessing."
+                )
 
-        ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
+            ocr_results = [(line[0], (line[1][0], line[1][1])) for line in result[0]]
+
+        elif EASYOCR_AVAILABLE:
+            reader = self._get_easyocr()
+            try:
+                result = reader.readtext(image_array)
+            except Exception as e:
+                logger.error(f"EasyOCR processing failed for array input: {e}")
+                raise CorruptImageError(
+                    f"Failed to process image array: {str(e)}. The image data may be corrupted."
+                ) from e
+
+            if not result:
+                logger.warning(
+                    "EasyOCR returned no text from preprocessed image. Try a better quality original image."
+                )
+                raise NoTextDetectedError(
+                    "OCR returned no text from preprocessed image. "
+                    "Try a better quality original image or adjust preprocessing."
+                )
+
+            ocr_results = []
+            for item in result:
+                bbox = item[0]
+                text = item[1]
+                confidence = item[2]
+                ocr_results.append((bbox, (text, confidence)))
+
+        else:
+            raise ImportError("No OCR backend available")
+
         confidences = [item[1][1] for item in ocr_results]
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 

@@ -24,6 +24,27 @@ except ImportError:
     PREPROCESS_AVAILABLE = False
     preprocessing_pipeline = None
 
+
+def normalize_ocr_results(ocr_results: list) -> list[dict]:
+    """Normalize OCR results to dict format with center coordinates."""
+    normalized = []
+    for bbox, (text, confidence) in ocr_results:
+        x_coords = [pt[0] for pt in bbox]
+        y_coords = [pt[1] for pt in bbox]
+        x_center = sum(x_coords) / len(x_coords)
+        y_center = sum(y_coords) / len(y_coords)
+        normalized.append(
+            {
+                "text": text,
+                "confidence": confidence,
+                "x_center": x_center,
+                "y_center": y_center,
+                "bbox": bbox,
+            }
+        )
+    return normalized
+
+
 app = typer.Typer(name="bill-extract", add_completion=False, no_args_is_help=True)
 
 
@@ -131,6 +152,16 @@ def main(
                         ocr_results = ocr_engine.extract_text_from_array(processed)
                     else:
                         ocr_results = ocr_engine.extract_text(str(img_file))
+
+                    logger.info(f"OCR found {len(ocr_results)} text regions")
+                    normalized_results = normalize_ocr_results(ocr_results)
+
+                    progress.update(
+                        file_task,
+                        description=f"[cyan]Extracting fields from {img_file.name}...",
+                        completed=3,
+                    )
+                    bill_data = extractor.extract(normalized_results)
                 else:
                     progress.update(
                         file_task,
@@ -139,14 +170,15 @@ def main(
                     )
                     ocr_results = ocr_engine.extract_text(str(img_file))
 
-                logger.info(f"OCR found {len(ocr_results)} text regions")
+                    logger.info(f"OCR found {len(ocr_results)} text regions")
+                    normalized_results = normalize_ocr_results(ocr_results)
 
-                progress.update(
-                    file_task,
-                    description=f"[cyan]Extracting fields from {img_file.name}...",
-                    completed=3,
-                )
-                bill_data = extractor.extract(ocr_results)
+                    progress.update(
+                        file_task,
+                        description=f"[cyan]Extracting fields from {img_file.name}...",
+                        completed=3,
+                    )
+                    bill_data = extractor.extract(normalized_results)
                 logger.info(f"Extracted: vendor={bill_data.vendor}, total={bill_data.total}")
                 results.append((img_file.name, bill_data, False))
 
